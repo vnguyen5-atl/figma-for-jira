@@ -1,3 +1,4 @@
+import { uniqueWith } from '../common/array-utils';
 import { getFeatureFlag, getLDClient } from '../config/launch_darkly';
 import type { ConnectUserInfo } from '../domain/entities';
 import { FigmaTeamAuthStatus } from '../domain/entities';
@@ -95,8 +96,11 @@ async function syncDesignsToJira(
 
 	if (!associatedFigmaDesigns.length) return;
 
+	const atlassianDesignIds = associatedFigmaDesigns.map((x) => x.designId);
+	const uniqueDesignIds = uniqueWith(atlassianDesignIds, (x, y) => x.equal(y));
+
 	const designs = await figmaService.getAvailableDesignsFromSameFile(
-		associatedFigmaDesigns.map((design) => design.designId),
+		uniqueDesignIds,
 		adminInfo,
 	);
 
