@@ -4,6 +4,7 @@ export type Config = {
 	readonly app: {
 		readonly baseUrl: URL;
 		readonly key: string;
+		readonly id: string;
 	};
 	readonly server: {
 		readonly port: number;
@@ -42,6 +43,7 @@ export const getConfig = (): Config => {
 			app: {
 				baseUrl: new URL(readEnvVarString('APP_URL')),
 				key: readEnvVarString('APP_KEY'),
+				id: readEnvVarString('FORGE_APP_ID'),
 			},
 			server: {
 				port: readEnvVarInt('SERVER_PORT'),

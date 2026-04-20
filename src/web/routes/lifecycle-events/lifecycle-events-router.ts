@@ -15,11 +15,11 @@ import type {
 import type { ConnectInstallationCreateParams } from '../../../domain/entities';
 import { installedUseCase, uninstalledUseCase } from '../../../usecases';
 import { requestSchemaValidationMiddleware } from '../../middleware';
-import { jiraAsymmetricJwtAuthenticationMiddleware } from '../../middleware/jira';
+import { forgeInvocationTokenMiddleware } from '../../middleware/forge';
 
 export const lifecycleEventsRouter = Router();
 
-lifecycleEventsRouter.use(jiraAsymmetricJwtAuthenticationMiddleware);
+lifecycleEventsRouter.use(forgeInvocationTokenMiddleware);
 
 /**
  * Handles an "Installed" lifecycle event.

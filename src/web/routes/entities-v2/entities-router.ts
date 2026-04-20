@@ -24,11 +24,11 @@ import {
 } from '../../../usecases';
 import { BadRequestResponseStatusError } from '../../errors';
 import { requestSchemaValidationMiddleware } from '../../middleware';
-import { jiraServerToServerSymmetricJwtAuthenticationMiddleware } from '../../middleware/jira';
+import { forgeInvocationTokenMiddleware } from '../../middleware/forge';
 
 export const entitiesRouterV2 = Router();
 
-entitiesRouterV2.use(jiraServerToServerSymmetricJwtAuthenticationMiddleware);
+entitiesRouterV2.use(forgeInvocationTokenMiddleware);
 
 /**
  * Returns Figma design details for the given URL.
