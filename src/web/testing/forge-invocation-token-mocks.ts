@@ -37,7 +37,7 @@ export const generateForgeInvocationToken = async ({
 		},
 	})
 		.setProtectedHeader({ alg: 'RS256' })
-		.setIssuer('forge')
+		.setIssuer('forge/invocation-token')
 		.setAudience(appId)
 		.setIssuedAt(now)
 		.setExpirationTime(now + expiresInSeconds)

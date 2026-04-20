@@ -37,7 +37,7 @@ const signToken = async (
 
 	return new SignJWT(payload)
 		.setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
-		.setIssuer('forge')
+		.setIssuer('forge/invocation-token')
 		.setAudience(audience)
 		.setIssuedAt(now)
 		.setExpirationTime(now + expiresInSeconds)
@@ -77,7 +77,7 @@ describe('ForgeInvocationTokenVerifier', () => {
 			expect(claims.accountId).toBe(TEST_ACCOUNT_ID);
 			expect(claims.isAdminUser).toBe(true);
 			expect(claims.aud).toBe(TEST_APP_ID);
-			expect(claims.iss).toBe('forge');
+			expect(claims.iss).toBe('forge/invocation-token');
 			expect(claims.apiBaseUrl).toBe(TEST_API_BASE_URL);
 		});
 

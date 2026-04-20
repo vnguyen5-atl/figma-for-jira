@@ -27,7 +27,7 @@ describe('forgeInvocationTokenMiddleware', () => {
 		const next = jest.fn();
 
 		jest.spyOn(forgeInvocationTokenVerifier, 'verify').mockResolvedValue({
-			iss: 'forge',
+			iss: 'forge/invocation-token',
 			aud: TEST_APP_ID,
 			cloudId: TEST_CLOUD_ID,
 			accountId: TEST_ACCOUNT_ID,

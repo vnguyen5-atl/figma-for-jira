@@ -231,6 +231,35 @@ Connect-only test mocks deleted:
 
 ### Phase 5 — Outbound Jira API auth migration (✅ done)
 
+**Audit fixes (2026-04-21)** — verified Phases 1–5 against the official Forge
+documentation. Fixed:
+
+- `manifest.yml` `scheduledTrigger.interval` was `six-hours` (invalid). Changed
+  to `hour` — valid intervals per Forge docs are: `fiveMinute`, `hour`, `day`,
+  `week`. Limit: max 5 scheduled triggers per app.
+- `manifest.yml` `remotes.connect` was missing `operations`. Added
+  `[compute, storage]` because we (a) make outbound Jira API calls using the
+  appSystemToken (compute) and (b) persist EUD (Figma file/design data) in our
+  own Postgres on the remote (storage).
+- FIT verifier was not validating the `iss` claim. Added strict validation
+  that `iss === "forge/invocation-token"` (exact string Forge uses, confirmed
+  by app owners).
+
+Verified-correct (no change required):
+
+- `auth.appSystemToken.enabled: true` matches the docs exactly.
+- `read:app-system-token` scope is required and present.
+- `x-forge-oauth-system` header is the right header for outbound Atlassian app
+  REST API calls from the remote.
+- `jira:adminPage` does NOT require `render` or `resolver` — `resource` +
+  `useAsConfig` is sufficient (per app owner clarification, contra what some
+  docs examples show).
+- JWKS endpoint `https://forge.cdn.prod.atlassian-dev.net/.well-known/jwks.json`
+  is correct (verified by app owner).
+- `runtime.name: nodejs22.x` matches the docs' recommended runtime.
+- `preUninstall` module + `function` (singular) module type are correct.
+- `devops:designInfoProvider` is a valid (undocumented) module key.
+
 Replace the placeholder `Bearer FORGE_APP_TOKEN_PLACEHOLDER` in
 `jiraClient` with a real Forge **app system token**, and replace the
 cloudId-derived URL with the **`apiBaseUrl`** that Forge provides.

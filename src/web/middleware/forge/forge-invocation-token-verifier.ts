@@ -55,6 +55,7 @@ export class ForgeInvocationTokenVerifier {
 	): Promise<ForgeInvocationTokenClaims> => {
 		const { payload } = await jwtVerify(token, this.jwks, {
 			audience: appId,
+			issuer: 'forge/invocation-token',
 		});
 
 		const { iss, aud, exp, iat } = payload;

@@ -6,6 +6,12 @@ app:
 remotes:
   - key: connect
     baseUrl: https://connectie-vnguyen5.public.atlastunnel.com
+    # We make outbound calls to Atlassian APIs (Jira) using the appSystemToken,
+    # which is "compute". We also persist EUD (Figma file webhook + design data)
+    # in our own Postgres on the remote — that's "storage".
+    operations:
+      - compute
+      - storage
     auth:
       appSystemToken:
         enabled: true
@@ -48,11 +54,12 @@ modules:
   scheduledTrigger:
     - key: figma-refresh-app-tokens
       function: refresh-app-tokens-handler
-      # Run every 6 hours per installation. Each invocation receives a
-      # fresh `x-forge-oauth-system` header for that installation, which
-      # the handler persists to the `jira_app_token` table for use by
-      # the Figma webhook flow (which has no inbound FIT of its own).
-      interval: six-hours
+      # Run hourly per installation. Each invocation receives a fresh
+      # `x-forge-oauth-system` header for that installation, which the
+      # handler persists to the `jira_app_token` table for use by the
+      # Figma webhook flow (which has no inbound FIT of its own).
+      # Valid intervals per Forge docs: fiveMinute, hour, day, week.
+      interval: hour
 
   function:
     - key: pre-uninstall-handler
