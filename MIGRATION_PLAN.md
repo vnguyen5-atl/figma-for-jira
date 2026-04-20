@@ -173,10 +173,27 @@ These were coupled and landed together.
 
 - ✅ `npx tsc --noEmit -p tsconfig.build.json` — production code
   compiles cleanly with no errors.
+- ✅ `npm run test:unit` — **all 248 unit tests passing.**
 
-#### Remaining work for Phase 2+4
+#### Unit test refactor (done)
 
-- [ ] **Unit/integration tests** (~23 test files) — mechanical
+All 23 unit test files were updated to use `cloudId` instead of
+`connectInstallation`. The work was done as a bulk `sed` replacement plus
+targeted rewrites for the few tests that needed structural changes
+(`uninstalled-use-case.test.ts` now mocks `prismaClient.$transaction` since
+the use case deletes data via direct Prisma calls, and `jira-client.test.ts`
+asserts the new Forge-style URL pattern + Bearer auth header).
+
+Connect-only test mocks deleted:
+
+- `src/web/routes/entities-v2/testing/`
+- `src/web/routes/lifecycle-events/testing/`
+- `src/web/testing/jira-jwt-token-mocks.ts`
+- `src/web/testing/connect-api-mock.ts`
+
+#### Integration tests (deferred to Phase 8)
+
+- [ ] **Integration tests** — 6 files still reference Connect JWT helpers
       `connectInstallation` → `cloudId` refactor across all test files.
       Production code is done and TypeScript-clean, but the existing tests
       still reference deleted helpers (`generateConnectInstallation`,
