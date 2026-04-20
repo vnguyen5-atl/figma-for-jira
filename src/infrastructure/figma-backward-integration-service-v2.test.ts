@@ -7,6 +7,7 @@ import { jiraService } from './jira';
 import {
 	generateCloudId,
 	generateFigmaDesignIdentifier,
+	generateJiraCallContext,
 	generateJiraIssue,
 	generateJiraIssueId,
 } from '../domain/entities/testing';
@@ -15,6 +16,7 @@ describe('FigmaBackwardIntegrationServiceV2', () => {
 	describe('tryCreateDevResourceForJiraIssue', () => {
 		it('should create Figma Dev Resource', async () => {
 			const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 			const atlassianUserId = uuidv4();
 			const issueId = generateJiraIssueId();
 			const issue = generateJiraIssue({ id: issueId });
@@ -28,7 +30,7 @@ describe('FigmaBackwardIntegrationServiceV2', () => {
 				figmaDesignId,
 				issueId,
 				atlassianUserId,
-				cloudId,
+				jiraCallContext,
 			});
 
 			expect(
@@ -49,6 +51,7 @@ describe('FigmaBackwardIntegrationServiceV2', () => {
 
 		it('should not create Dev Resource when Issue is not found', async () => {
 			const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 			const atlassianUserId = uuidv4();
 			const issueId = generateJiraIssueId();
 			const figmaDesignId = generateFigmaDesignIdentifier();
@@ -59,7 +62,7 @@ describe('FigmaBackwardIntegrationServiceV2', () => {
 				figmaDesignId,
 				issueId,
 				atlassianUserId,
-				cloudId,
+				jiraCallContext,
 			});
 
 			expect(
@@ -69,6 +72,7 @@ describe('FigmaBackwardIntegrationServiceV2', () => {
 
 		it('should not throw when unauthorized to create Dev Resource', async () => {
 			const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 			const atlassianUserId = uuidv4();
 			const issueId = generateJiraIssueId();
 			const issue = generateJiraIssue({ id: issueId });
@@ -83,13 +87,14 @@ describe('FigmaBackwardIntegrationServiceV2', () => {
 					figmaDesignId,
 					issueId,
 					atlassianUserId,
-					cloudId,
+					jiraCallContext,
 				}),
 			).resolves.not.toThrow();
 		});
 
 		it('should throw when unexpected error occurs', async () => {
 			const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 			const atlassianUserId = uuidv4();
 			const issueId = generateJiraIssueId();
 			const figmaDesignId = generateFigmaDesignIdentifier();
@@ -101,7 +106,7 @@ describe('FigmaBackwardIntegrationServiceV2', () => {
 					figmaDesignId,
 					issueId,
 					atlassianUserId,
-					cloudId,
+					jiraCallContext,
 				}),
 			).rejects.toBe(error);
 		});
@@ -110,6 +115,7 @@ describe('FigmaBackwardIntegrationServiceV2', () => {
 	describe('tryDeleteDevResourceForJiraIssue', () => {
 		it('should delete Figma Dev Resource', async () => {
 			const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 			const atlassianUserId = uuidv4();
 			const issueId = generateJiraIssueId();
 			const issue = generateJiraIssue({ id: issueId });
@@ -121,7 +127,7 @@ describe('FigmaBackwardIntegrationServiceV2', () => {
 				figmaDesignId,
 				issueId,
 				atlassianUserId,
-				cloudId,
+				jiraCallContext,
 			});
 
 			expect(figmaService.tryDeleteDevResource).toHaveBeenCalledWith({
@@ -136,6 +142,7 @@ describe('FigmaBackwardIntegrationServiceV2', () => {
 
 		it('should not delete Dev Resource when Issue is not found', async () => {
 			const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 			const atlassianUserId = uuidv4();
 			const issueId = generateJiraIssueId();
 			const figmaDesignId = generateFigmaDesignIdentifier();
@@ -146,7 +153,7 @@ describe('FigmaBackwardIntegrationServiceV2', () => {
 				figmaDesignId,
 				issueId,
 				atlassianUserId,
-				cloudId,
+				jiraCallContext,
 			});
 
 			expect(figmaService.tryDeleteDevResource).not.toHaveBeenCalled();
@@ -154,6 +161,7 @@ describe('FigmaBackwardIntegrationServiceV2', () => {
 
 		it('should not throw when unauthorised to delete a Dev Resource', async () => {
 			const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 			const atlassianUserId = uuidv4();
 			const issueId = generateJiraIssueId();
 			const issue = generateJiraIssue({ id: issueId });
@@ -168,13 +176,14 @@ describe('FigmaBackwardIntegrationServiceV2', () => {
 					figmaDesignId,
 					issueId,
 					atlassianUserId,
-					cloudId,
+					jiraCallContext,
 				}),
 			).resolves.not.toThrow();
 		});
 
 		it('should throw when unexpected error occurs', async () => {
 			const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 			const atlassianUserId = uuidv4();
 			const issueId = generateJiraIssueId();
 			const figmaDesignId = generateFigmaDesignIdentifier();
@@ -186,7 +195,7 @@ describe('FigmaBackwardIntegrationServiceV2', () => {
 					figmaDesignId,
 					issueId,
 					atlassianUserId,
-					cloudId,
+					jiraCallContext,
 				}),
 			).rejects.toBe(error);
 		});

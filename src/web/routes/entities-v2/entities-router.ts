@@ -73,7 +73,7 @@ entitiesRouterV2.put(
 		res: OnEntityAssociatedResponse,
 		next: NextFunction,
 	) => {
-		const { cloudId } = res.locals;
+		const { jiraCallContext } = res.locals;
 		const atlassianUserId = req.body.user?.id;
 
 		onDesignAssociatedWithIssueUseCaseParams
@@ -81,7 +81,7 @@ entitiesRouterV2.put(
 				design: req.body.entity,
 				issue: req.body.associatedWith,
 				atlassianUserId,
-				cloudId,
+				jiraCallContext,
 			})
 			.then(() => res.status(HttpStatusCode.Ok).send())
 			.catch(next);
@@ -99,7 +99,7 @@ entitiesRouterV2.put(
 		res: OnEntityDisassociatedResponse,
 		next: NextFunction,
 	) => {
-		const { cloudId } = res.locals;
+		const { jiraCallContext } = res.locals;
 		const atlassianUserId = req.body.user?.id;
 
 		onDesignDisassociatedFromIssueUseCase
@@ -107,7 +107,7 @@ entitiesRouterV2.put(
 				design: req.body.entity,
 				issue: req.body.disassociatedFrom,
 				atlassianUserId,
-				cloudId,
+				jiraCallContext,
 			})
 			.then(() => res.status(HttpStatusCode.Ok).send())
 			.catch(next);

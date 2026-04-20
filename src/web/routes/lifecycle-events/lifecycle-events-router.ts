@@ -1,15 +1,10 @@
 import { HttpStatusCode } from 'axios';
-import type { NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
 
-import { UNINSTALLED_FORGE_LIFECYCLE_EVENT_REQUEST_SCHEMA } from './schemas';
-import type {
-	ForgeLifecycleEventResponse,
-	UninstalledForgeLifecycleEventRequest,
-} from './types';
-
+import type { JiraCallContext } from '../../../domain/entities';
 import { uninstalledUseCase } from '../../../usecases';
-import { requestSchemaValidationMiddleware } from '../../middleware';
+import { UnauthorizedResponseStatusError } from '../../errors';
 import { forgeInvocationTokenMiddleware } from '../../middleware/forge';
 
 export const lifecycleEventsRouter = Router();
@@ -27,21 +22,42 @@ lifecycleEventsRouter.use(forgeInvocationTokenMiddleware);
  * mitigate risk of partial failure, the `uninstalledUseCase` is implemented
  * to be idempotent. Consider also using a queue (e.g., SQS) to retry handling
  * an event in case of failure.
+ *
+ * The `cloudId`, `apiBaseUrl`, and `appSystemToken` come from the FIT and the
+ * `x-forge-oauth-system` header (extracted by `forgeInvocationTokenMiddleware`),
+ * not from the request body.
  */
 lifecycleEventsRouter.post(
 	'/uninstalled',
-	requestSchemaValidationMiddleware(
-		UNINSTALLED_FORGE_LIFECYCLE_EVENT_REQUEST_SCHEMA,
-	),
 	(
-		req: UninstalledForgeLifecycleEventRequest,
-		res: ForgeLifecycleEventResponse,
+		req: Request,
+		res: Response<unknown, { jiraCallContext?: JiraCallContext }>,
 		next: NextFunction,
 	) => {
-		const { cloudId } = req.body;
+		const { jiraCallContext } = res.locals;
+		if (!jiraCallContext) {
+			return next(
+				new UnauthorizedResponseStatusError(
+					'Missing Jira call context (x-forge-oauth-system header).',
+				),
+			);
+		}
+
 		uninstalledUseCase
-			.execute(cloudId)
+			.execute(jiraCallContext)
 			.then(() => res.sendStatus(HttpStatusCode.NoContent))
 			.catch(next);
 	},
 );
+
+/**
+ * Persists the freshest app system token for the current installation.
+ *
+ * Called periodically by the Forge `scheduledTrigger` function in
+ * `src/forge/refresh-app-tokens.ts`. The actual persistence happens
+ * inside `forgeInvocationTokenMiddleware`, so this handler is just a
+ * 204 endpoint to give the trigger something to POST to.
+ */
+lifecycleEventsRouter.post('/refresh-app-token', (_req, res) => {
+	res.sendStatus(HttpStatusCode.NoContent);
+});

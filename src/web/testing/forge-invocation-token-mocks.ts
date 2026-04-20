@@ -11,12 +11,16 @@ export const generateForgeInvocationToken = async ({
 	cloudId,
 	accountId,
 	isAdminUser,
+	apiBaseUrl,
+	installationId,
 	expiresInSeconds = 99999,
 }: {
 	appId: string;
 	cloudId: string;
 	accountId?: string;
 	isAdminUser?: boolean;
+	apiBaseUrl?: string;
+	installationId?: string;
 	expiresInSeconds?: number;
 }): Promise<{ token: string; publicKey: KeyLike; privateKey: KeyLike }> => {
 	const { publicKey, privateKey } = await generateKeyPair('RS256');
@@ -27,6 +31,10 @@ export const generateForgeInvocationToken = async ({
 		cloudId,
 		...(accountId !== undefined ? { accountId } : {}),
 		...(isAdminUser !== undefined ? { isAdminUser } : {}),
+		app: {
+			apiBaseUrl: apiBaseUrl ?? `https://api.atlassian.com/ex/jira/${cloudId}`,
+			...(installationId !== undefined ? { installationId } : {}),
+		},
 	})
 		.setProtectedHeader({ alg: 'RS256' })
 		.setIssuer('forge')

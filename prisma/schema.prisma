@@ -75,3 +75,24 @@ enum WebhookEventType {
 
   @@map("jira_figma_webhook_event_type")
 }
+
+/// Persisted Forge app system token + apiBaseUrl per cloudId.
+///
+/// Updated on every user-driven inbound request (which carries a fresh
+/// `x-forge-oauth-system` header) and refreshed periodically by a Forge
+/// `scheduledTrigger` function. Used by the Figma webhook flow, which has
+/// no inbound FIT of its own and therefore no fresh token.
+///
+/// SECURITY: this row contains a bearer token that authenticates the app
+/// to Atlassian APIs. Treat as a credential. See MIGRATION_PLAN.md
+/// "Open questions" for Phase 5.
+model JiraAppToken {
+  id             BigInt   @id @default(autoincrement())
+  cloudId        String   @unique @map("cloud_id")
+  apiBaseUrl     String   @map("api_base_url")
+  appSystemToken String   @map("app_system_token")
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("jira_app_token")
+}

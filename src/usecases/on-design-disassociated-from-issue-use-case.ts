@@ -1,7 +1,10 @@
 import { InvalidInputUseCaseResultError } from './errors';
 
 import { getFeatureFlag, getLDClient } from '../config/launch_darkly';
-import { FigmaDesignIdentifier } from '../domain/entities';
+import {
+	FigmaDesignIdentifier,
+	type JiraCallContext,
+} from '../domain/entities';
 import { figmaBackwardIntegrationServiceV2 } from '../infrastructure';
 import { figmaService } from '../infrastructure/figma';
 import {
@@ -19,7 +22,7 @@ export type OnDesignDisassociatedFromIssueUseCaseParams = {
 		readonly id: string;
 	};
 	readonly atlassianUserId?: string;
-	readonly cloudId: string;
+	readonly jiraCallContext: JiraCallContext;
 };
 
 export const onDesignDisassociatedFromIssueUseCase = {
@@ -40,20 +43,22 @@ export const onDesignDisassociatedFromIssueUseCase = {
 			);
 		}
 
+		const cloudId = params.jiraCallContext.cloudId;
+
 		await associatedFigmaDesignRepository.deleteByDesignIdAndAssociatedWithAriAndCloudId(
 			figmaDesignId,
 			params.issue.ari,
-			params.cloudId,
+			cloudId,
 		);
 
 		await figmaBackwardIntegrationServiceV2.tryDeleteDevResourceForJiraIssue({
 			figmaDesignId,
 			issueId: params.issue.id,
 			atlassianUserId: params.atlassianUserId,
-			cloudId: params.cloudId,
+			jiraCallContext: params.jiraCallContext,
 		});
 
-		await maybeTryDeleteFigmaFileWebhooks(figmaDesignId, params.cloudId);
+		await maybeTryDeleteFigmaFileWebhooks(figmaDesignId, cloudId);
 	},
 };
 

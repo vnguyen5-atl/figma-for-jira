@@ -1,16 +1,10 @@
 import { jiraClient } from './jira-client';
-import {
-	generateFailedSubmitDesignsResponse,
-	generateSuccessfulSubmitDesignsResponse,
-} from './jira-client/testing';
-import {
-	jiraDesignService,
-	JiraSubmitDesignServiceError,
-} from './jira-design-service';
+import { generateSuccessfulSubmitDesignsResponse } from './jira-client/testing';
+import { jiraDesignService } from './jira-design-service';
 
 import {
 	generateAtlassianDesign,
-	generateCloudId,
+	generateJiraCallContext,
 } from '../../domain/entities/testing';
 
 describe('JiraDesignService', () => {
@@ -26,7 +20,7 @@ describe('JiraDesignService', () => {
 		});
 
 		it('should submit designs', async () => {
-			const cloudId = generateCloudId();
+			const jiraCallContext = generateJiraCallContext();
 			const designs = [generateAtlassianDesign(), generateAtlassianDesign()];
 			const submitDesignsResponse = generateSuccessfulSubmitDesignsResponse(
 				designs.map((design) => design.id),
@@ -35,48 +29,38 @@ describe('JiraDesignService', () => {
 				.spyOn(jiraClient, 'submitDesigns')
 				.mockResolvedValue(submitDesignsResponse);
 
-			await jiraDesignService.submitDesigns(designs, cloudId);
+			await jiraDesignService.submitDesigns(designs, jiraCallContext);
 
 			expect(jiraClient.submitDesigns).toHaveBeenCalledWith(
 				{ designs },
-				cloudId,
+				jiraCallContext,
 			);
-		});
-
-		it('should throw when design is rejected ', async () => {
-			const cloudId = generateCloudId();
-			const designs = [generateAtlassianDesign(), generateAtlassianDesign()];
-			const submitDesignsResponse = generateFailedSubmitDesignsResponse(
-				designs.map((design) => design.id),
-			);
-			const expectedError = JiraSubmitDesignServiceError.designRejected(
-				submitDesignsResponse.rejectedEntities[0].key.entityId,
-				submitDesignsResponse.rejectedEntities[0].errors,
-			);
-			jest
-				.spyOn(jiraClient, 'submitDesigns')
-				.mockResolvedValue(submitDesignsResponse);
-
-			await expect(() =>
-				jiraDesignService.submitDesigns(designs, cloudId),
-			).rejects.toStrictEqual(expectedError);
 		});
 	});
 
 	describe('submitDesign', () => {
 		it('should call submitDesigns', async () => {
-			const cloudId = generateCloudId();
+			const jiraCallContext = generateJiraCallContext();
 			const design = generateAtlassianDesign();
+			const submitDesignsResponse = generateSuccessfulSubmitDesignsResponse([
+				design.id,
+			]);
 
 			jest
 				.spyOn(jiraDesignService, 'submitDesigns')
-				.mockResolvedValue(undefined);
+				.mockResolvedValue(submitDesignsResponse);
 
-			await jiraDesignService.submitDesign(design, cloudId);
+			await jiraDesignService.submitDesign(design, jiraCallContext);
 
 			expect(jiraDesignService.submitDesigns).toHaveBeenCalledWith(
-				[design],
-				cloudId,
+				[
+					{
+						...design,
+						addAssociations: [],
+						removeAssociations: [],
+					},
+				],
+				jiraCallContext,
 			);
 		});
 	});

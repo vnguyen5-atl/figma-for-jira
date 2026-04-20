@@ -3,9 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { uninstalledUseCase } from './uninstalled-use-case';
 
 import {
-	generateCloudId,
-	generateFigmaFileWebhook,
+	generateCloudId, generateFigmaFileWebhook,
 	generateFigmaTeam,
+	generateJiraCallContext,
 } from '../domain/entities/testing';
 import { figmaService } from '../infrastructure/figma';
 import { jiraService } from '../infrastructure/jira';
@@ -22,6 +22,7 @@ describe('uninstalledUseCase', () => {
 
 	it('should delete Figma webhooks and app data for the given cloudId', async () => {
 		const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 		const [figmaTeam1, figmaTeam2] = [
 			generateFigmaTeam({ cloudId }),
 			generateFigmaTeam({ cloudId }),
@@ -53,6 +54,7 @@ describe('uninstalledUseCase', () => {
 			figmaOAuth2UserCredentials: { deleteMany: jest.fn() },
 			figmaTeam: { deleteMany: jest.fn() },
 			figmaFileWebhook: { deleteMany: jest.fn() },
+			jiraAppToken: { deleteMany: jest.fn() },
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		} as any);
 
@@ -60,7 +62,7 @@ describe('uninstalledUseCase', () => {
 			.spyOn(jiraService, 'deleteAppConfigurationState')
 			.mockResolvedValue(undefined);
 
-		await uninstalledUseCase.execute(cloudId);
+		await uninstalledUseCase.execute(jiraCallContext);
 
 		expect(figmaService.tryDeleteWebhook).toHaveBeenCalledTimes(4);
 		expect(figmaService.tryDeleteWebhook).toHaveBeenCalledWith(
@@ -81,7 +83,7 @@ describe('uninstalledUseCase', () => {
 		);
 		expect(transactionSpy).toHaveBeenCalled();
 		expect(jiraService.deleteAppConfigurationState).toHaveBeenCalledWith(
-			cloudId,
+			jiraCallContext,
 		);
 	});
 });

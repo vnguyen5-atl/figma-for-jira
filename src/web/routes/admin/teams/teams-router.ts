@@ -37,10 +37,10 @@ teamsRouter.post(
 		res: ConnectFigmaTeamResponse,
 		next: NextFunction,
 	) => {
-		const { accountId, cloudId } = res.locals;
+		const { accountId, jiraCallContext } = res.locals;
 
 		connectFigmaTeamUseCase
-			.execute(req.params.teamId, accountId, cloudId)
+			.execute(req.params.teamId, accountId, jiraCallContext)
 			.then((figmaTeamSummary) =>
 				res.status(HttpStatusCode.Ok).send(figmaTeamSummary),
 			)
@@ -55,10 +55,10 @@ teamsRouter.delete(
 		res: DisconnectFigmaTeamResponse,
 		next: NextFunction,
 	) => {
-		const { cloudId } = res.locals;
+		const { jiraCallContext } = res.locals;
 
 		disconnectFigmaTeamUseCase
-			.execute(req.params.teamId, cloudId)
+			.execute(req.params.teamId, jiraCallContext)
 			.then(() => res.sendStatus(HttpStatusCode.Ok))
 			.catch(next);
 	},

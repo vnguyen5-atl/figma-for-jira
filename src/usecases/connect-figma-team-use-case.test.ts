@@ -1,7 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 
 import { FigmaTeamAuthStatus } from '../domain/entities';
-import { generateCloudId, generateFigmaTeam } from '../domain/entities/testing';
+import { generateCloudId,
+	generateFigmaTeam, generateJiraCallContext } from '../domain/entities/testing';
 import {
 	figmaService,
 	PaidPlanRequiredFigmaServiceError,
@@ -21,6 +22,7 @@ describe('connectFigmaTeamUseCase', () => {
 		const figmaTeam = generateFigmaTeam({ teamId, teamName });
 		const atlassianUserId = uuidv4();
 		const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 		const webhookId = uuidv4();
 
 		jest.spyOn(figmaService, 'getTeamName').mockResolvedValue(teamName);
@@ -37,7 +39,7 @@ describe('connectFigmaTeamUseCase', () => {
 		const result = await connectFigmaTeamUseCase.execute(
 			teamId,
 			atlassianUserId,
-			cloudId,
+			jiraCallContext,
 		);
 
 		expect(result).toStrictEqual({
@@ -67,7 +69,7 @@ describe('connectFigmaTeamUseCase', () => {
 		});
 		expect(jiraService.setAppConfigurationState).toHaveBeenCalledWith(
 			ConfigurationState.CONFIGURED,
-			cloudId,
+			jiraCallContext,
 		);
 	});
 
@@ -80,7 +82,7 @@ describe('connectFigmaTeamUseCase', () => {
 		jest.spyOn(figmaTeamRepository, 'upsert');
 
 		await expect(
-			connectFigmaTeamUseCase.execute(uuidv4(), uuidv4(), generateCloudId()),
+			connectFigmaTeamUseCase.execute(uuidv4(), uuidv4(), generateJiraCallContext()),
 		).rejects.toBeInstanceOf(PaidFigmaPlanRequiredUseCaseResultError);
 
 		expect(figmaTeamRepository.upsert).not.toHaveBeenCalled();
@@ -96,7 +98,7 @@ describe('connectFigmaTeamUseCase', () => {
 		jest.spyOn(figmaTeamRepository, 'upsert');
 
 		await expect(
-			connectFigmaTeamUseCase.execute(uuidv4(), uuidv4(), generateCloudId()),
+			connectFigmaTeamUseCase.execute(uuidv4(), uuidv4(), generateJiraCallContext()),
 		).rejects.toStrictEqual(error);
 
 		expect(figmaTeamRepository.upsert).not.toHaveBeenCalled();

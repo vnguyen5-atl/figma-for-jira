@@ -14,22 +14,20 @@ import type {
 } from './types';
 
 import { SchemaValidationError } from '../../../common/schema-validation';
-import { generateCloudId } from '../../../domain/entities/testing';
+import type { JiraCallContext } from '../../../domain/entities';
+import { generateJiraCallContext } from '../../../domain/entities/testing';
 
 describe('JiraClient', () => {
-	let cloudId: string;
+	let jiraCallContext: JiraCallContext;
 
-	const expectedJiraApiBaseUrl = (cloud: string) =>
-		`https://api.atlassian.com/ex/jira/${cloud}/`;
-
-	const defaultExpectedRequestHeaders = () => ({
+	const expectedRequestHeaders = (ctx: JiraCallContext) => ({
 		headers: new AxiosHeaders().setAuthorization(
-			`Bearer FORGE_APP_TOKEN_PLACEHOLDER`,
+			`Bearer ${ctx.appSystemToken}`,
 		),
 	});
 
 	beforeEach(() => {
-		cloudId = generateCloudId();
+		jiraCallContext = generateJiraCallContext();
 	});
 
 	describe('submitDesigns', () => {
@@ -40,13 +38,13 @@ describe('JiraClient', () => {
 			]);
 			jest.spyOn(axios, 'post').mockResolvedValue({ data: response });
 
-			const result = await jiraClient.submitDesigns(request, cloudId);
+			const result = await jiraClient.submitDesigns(request, jiraCallContext);
 
 			expect(result).toBe(response);
 			expect(axios.post).toHaveBeenCalledWith(
-				`${expectedJiraApiBaseUrl(cloudId)}rest/designs/1.0/bulk`,
+				`${jiraCallContext.apiBaseUrl}/rest/designs/1.0/bulk`,
 				request,
-				defaultExpectedRequestHeaders(),
+				expectedRequestHeaders(jiraCallContext),
 			);
 		});
 
@@ -61,7 +59,7 @@ describe('JiraClient', () => {
 			});
 
 			await expect(() =>
-				jiraClient.submitDesigns(request, cloudId),
+				jiraClient.submitDesigns(request, jiraCallContext),
 			).rejects.toThrowError(SchemaValidationError);
 		});
 	});
@@ -72,12 +70,12 @@ describe('JiraClient', () => {
 			const response = generateGetIssueResponse({ key: issueKey });
 			jest.spyOn(axios, 'get').mockResolvedValue({ data: response });
 
-			const result = await jiraClient.getIssue(issueKey, cloudId);
+			const result = await jiraClient.getIssue(issueKey, jiraCallContext);
 
 			expect(result).toBe(response);
 			expect(axios.get).toHaveBeenCalledWith(
-				`${expectedJiraApiBaseUrl(cloudId)}rest/api/3/issue/${issueKey}`,
-				defaultExpectedRequestHeaders(),
+				`${jiraCallContext.apiBaseUrl}/rest/api/3/issue/${issueKey}`,
+				expectedRequestHeaders(jiraCallContext),
 			);
 		});
 
@@ -89,7 +87,7 @@ describe('JiraClient', () => {
 			jest.spyOn(axios, 'get').mockResolvedValue({ data: unexpectedResponse });
 
 			await expect(() =>
-				jiraClient.getIssue(issueKey, cloudId),
+				jiraClient.getIssue(issueKey, jiraCallContext),
 			).rejects.toThrowError(SchemaValidationError);
 		});
 	});
@@ -99,16 +97,18 @@ describe('JiraClient', () => {
 		it('should set app property', async () => {
 			jest.spyOn(axios, 'put').mockResolvedValue({ status: HttpStatusCode.Ok });
 
-			await jiraClient.setAppProperty(propertyKey, 'some value', cloudId);
+			await jiraClient.setAppProperty(
+				propertyKey,
+				'some value',
+				jiraCallContext,
+			);
 
-			const headers = defaultExpectedRequestHeaders()
+			const headers = expectedRequestHeaders(jiraCallContext)
 				.headers.setAccept('application/json')
 				.setContentType('application/json');
 
 			expect(axios.put).toHaveBeenCalledWith(
-				`${expectedJiraApiBaseUrl(
-					cloudId,
-				)}rest/forge/1/app/properties/${propertyKey}`,
+				`${jiraCallContext.apiBaseUrl}/rest/forge/1/app/properties/${propertyKey}`,
 				JSON.stringify('some value'),
 				{ headers },
 			);
@@ -122,13 +122,11 @@ describe('JiraClient', () => {
 				.spyOn(axios, 'delete')
 				.mockResolvedValue({ status: HttpStatusCode.NoContent });
 
-			await jiraClient.deleteAppProperty(propertyKey, cloudId);
+			await jiraClient.deleteAppProperty(propertyKey, jiraCallContext);
 
 			expect(axios.delete).toHaveBeenCalledWith(
-				`${expectedJiraApiBaseUrl(
-					cloudId,
-				)}rest/forge/1/app/properties/${propertyKey}`,
-				defaultExpectedRequestHeaders(),
+				`${jiraCallContext.apiBaseUrl}/rest/forge/1/app/properties/${propertyKey}`,
+				expectedRequestHeaders(jiraCallContext),
 			);
 		});
 	});
@@ -144,13 +142,16 @@ describe('JiraClient', () => {
 				data: response,
 			});
 
-			const result = await jiraClient.checkPermissions(request, cloudId);
+			const result = await jiraClient.checkPermissions(
+				request,
+				jiraCallContext,
+			);
 
 			expect(result).toBe(response);
 			expect(axios.post).toHaveBeenCalledWith(
-				`${expectedJiraApiBaseUrl(cloudId)}rest/api/3/permissions/check`,
+				`${jiraCallContext.apiBaseUrl}/rest/api/3/permissions/check`,
 				request,
-				defaultExpectedRequestHeaders(),
+				expectedRequestHeaders(jiraCallContext),
 			);
 		});
 	});

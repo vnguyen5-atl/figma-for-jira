@@ -31,6 +31,20 @@ import {
  */
 export const generateCloudId = () => uuidv4();
 
+export const generateJiraCallContext = ({
+	cloudId = generateCloudId(),
+	apiBaseUrl = `https://api.atlassian.com/ex/jira/${cloudId}`,
+	appSystemToken = 'test-app-system-token',
+}: {
+	cloudId?: string;
+	apiBaseUrl?: string;
+	appSystemToken?: string;
+} = {}) => ({
+	cloudId,
+	apiBaseUrl,
+	appSystemToken,
+});
+
 export const generateFigmaFileName = () => uuidv4();
 
 export const generateFigmaFileKey = () =>

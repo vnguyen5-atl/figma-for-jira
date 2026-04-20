@@ -1,6 +1,7 @@
 import { ForbiddenByJiraServiceError } from './errors';
 import { jiraClient } from './jira-client';
 
+import type { JiraCallContext } from '../../domain/entities';
 import { ForbiddenHttpClientError } from '../http-client-errors';
 
 const ADMIN_GLOBAL_PERMISSION = 'ADMINISTER';
@@ -8,7 +9,7 @@ const ADMIN_GLOBAL_PERMISSION = 'ADMINISTER';
 export class JiraUserService {
 	isAdmin = async (
 		atlassianUserId: string,
-		cloudId: string,
+		ctx: JiraCallContext,
 	): Promise<boolean> => {
 		try {
 			const response = await jiraClient.checkPermissions(
@@ -16,7 +17,7 @@ export class JiraUserService {
 					accountId: atlassianUserId,
 					globalPermissions: [ADMIN_GLOBAL_PERMISSION],
 				},
-				cloudId,
+				ctx,
 			);
 			return response.globalPermissions.includes(ADMIN_GLOBAL_PERMISSION);
 		} catch (error) {

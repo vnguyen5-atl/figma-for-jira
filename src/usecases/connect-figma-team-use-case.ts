@@ -6,7 +6,7 @@ import {
 	PaidFigmaPlanRequiredUseCaseResultError,
 } from './errors';
 
-import type { FigmaTeamSummary } from '../domain/entities';
+import type { FigmaTeamSummary, JiraCallContext } from '../domain/entities';
 import { FigmaTeamAuthStatus } from '../domain/entities';
 import {
 	figmaService,
@@ -25,8 +25,9 @@ export const connectFigmaTeamUseCase = {
 	execute: async (
 		teamId: string,
 		atlassianUserId: string,
-		cloudId: string,
+		jiraCallContext: JiraCallContext,
 	): Promise<FigmaTeamSummary> => {
+		const { cloudId } = jiraCallContext;
 		try {
 			const webhookPasscode = uuidv4();
 
@@ -53,7 +54,7 @@ export const connectFigmaTeamUseCase = {
 
 			await jiraService.setAppConfigurationState(
 				ConfigurationState.CONFIGURED,
-				cloudId,
+				jiraCallContext,
 			);
 
 			return figmaTeam.toFigmaTeamSummary();

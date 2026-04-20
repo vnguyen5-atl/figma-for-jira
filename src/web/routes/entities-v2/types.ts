@@ -1,9 +1,13 @@
 import type { Request, Response } from 'express';
 
-import type { AtlassianDesign } from '../../../domain/entities';
+import type {
+	AtlassianDesign,
+	JiraCallContext,
+} from '../../../domain/entities';
 
 export type EntitiesRequestLocals = {
 	readonly cloudId: string;
+	readonly jiraCallContext: JiraCallContext;
 };
 
 /*

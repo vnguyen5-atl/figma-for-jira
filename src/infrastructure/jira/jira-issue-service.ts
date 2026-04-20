@@ -1,6 +1,6 @@
 import { jiraClient } from './jira-client';
 
-import type { JiraIssue } from '../../domain/entities';
+import type { JiraCallContext, JiraIssue } from '../../domain/entities';
 import { NotFoundHttpClientError } from '../http-client-errors';
 
 export class JiraIssueService {
@@ -11,10 +11,10 @@ export class JiraIssueService {
 	 */
 	getIssue = async (
 		issueIdOrKey: string,
-		cloudId: string,
+		ctx: JiraCallContext,
 	): Promise<JiraIssue | null> => {
 		try {
-			return await jiraClient.getIssue(issueIdOrKey, cloudId);
+			return await jiraClient.getIssue(issueIdOrKey, ctx);
 		} catch (error) {
 			if (error instanceof NotFoundHttpClientError) return null;
 

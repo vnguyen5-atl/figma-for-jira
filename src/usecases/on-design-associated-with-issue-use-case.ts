@@ -6,6 +6,7 @@ import { getFeatureFlag, getLDClient } from '../config/launch_darkly';
 import {
 	FigmaDesignIdentifier,
 	FigmaFileWebhookEventType,
+	type JiraCallContext,
 } from '../domain/entities';
 import {
 	figmaBackwardIntegrationServiceV2,
@@ -29,7 +30,7 @@ export type OnDesignAssociatedWithIssueUseCaseParams = {
 		readonly id: string;
 	};
 	readonly atlassianUserId?: string;
-	readonly cloudId: string;
+	readonly jiraCallContext: JiraCallContext;
 };
 
 export const onDesignAssociatedWithIssueUseCaseParams = {
@@ -50,10 +51,12 @@ export const onDesignAssociatedWithIssueUseCaseParams = {
 			);
 		}
 
+		const cloudId = params.jiraCallContext.cloudId;
+
 		await associatedFigmaDesignRepository.upsert({
 			designId: figmaDesignId,
 			associatedWithAri: params.issue.ari,
-			cloudId: params.cloudId,
+			cloudId,
 			// Consider stop writing to this column.
 			// This code is called within the `onEntityAssociated` action, which is asynchronously called when a Design has been associated with an Issue.
 			// Therefore, the original input URL is not available in this context.
@@ -66,7 +69,7 @@ export const onDesignAssociatedWithIssueUseCaseParams = {
 			figmaDesignId,
 			issueId: params.issue.id,
 			atlassianUserId: params.atlassianUserId,
-			cloudId: params.cloudId,
+			jiraCallContext: params.jiraCallContext,
 		});
 
 		if (params.atlassianUserId) {
@@ -74,13 +77,13 @@ export const onDesignAssociatedWithIssueUseCaseParams = {
 				figmaDesignId.fileKey,
 				FigmaFileWebhookEventType.FILE_UPDATE,
 				params.atlassianUserId,
-				params.cloudId,
+				cloudId,
 			);
 			await maybeCreateFigmaFileWebhooks(
 				figmaDesignId.fileKey,
 				FigmaFileWebhookEventType.DEV_MODE_STATUS_UPDATE,
 				params.atlassianUserId,
-				params.cloudId,
+				cloudId,
 			);
 		} else {
 			getLogger().warn(

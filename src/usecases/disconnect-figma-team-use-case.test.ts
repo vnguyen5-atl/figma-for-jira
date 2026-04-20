@@ -1,6 +1,7 @@
 import { disconnectFigmaTeamUseCase } from './disconnect-figma-team-use-case';
 
-import { generateCloudId, generateFigmaTeam } from '../domain/entities/testing';
+import { generateCloudId,
+	generateFigmaTeam, generateJiraCallContext } from '../domain/entities/testing';
 import { figmaService } from '../infrastructure/figma';
 import { ConfigurationState, jiraService } from '../infrastructure/jira';
 import { figmaTeamRepository } from '../infrastructure/repositories';
@@ -8,6 +9,7 @@ import { figmaTeamRepository } from '../infrastructure/repositories';
 describe('disconnectFigmaTeamUseCase', () => {
 	it('should delete the webhook and FigmaTeam and set unconfigured app state', async () => {
 		const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 		const figmaTeam = generateFigmaTeam({
 			cloudId: cloudId,
 		});
@@ -21,7 +23,7 @@ describe('disconnectFigmaTeamUseCase', () => {
 			.spyOn(jiraService, 'setAppConfigurationState')
 			.mockResolvedValue(undefined);
 
-		await disconnectFigmaTeamUseCase.execute(figmaTeam.teamId, cloudId);
+		await disconnectFigmaTeamUseCase.execute(figmaTeam.teamId, jiraCallContext);
 
 		expect(figmaTeamRepository.getByTeamIdAndCloudId).toHaveBeenCalledWith(
 			figmaTeam.teamId,
@@ -35,12 +37,13 @@ describe('disconnectFigmaTeamUseCase', () => {
 		expect(figmaTeamRepository.findManyByCloudId).toHaveBeenCalledWith(cloudId);
 		expect(jiraService.setAppConfigurationState).toHaveBeenCalledWith(
 			ConfigurationState.NOT_CONFIGURED,
-			cloudId,
+			jiraCallContext,
 		);
 	});
 
 	it('should delete the webhook and FigmaTeam', async () => {
 		const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 		const figmaTeam = generateFigmaTeam({
 			cloudId: cloudId,
 		});
@@ -56,7 +59,7 @@ describe('disconnectFigmaTeamUseCase', () => {
 		]);
 		jest.spyOn(jiraService, 'setAppConfigurationState');
 
-		await disconnectFigmaTeamUseCase.execute(figmaTeam.teamId, cloudId);
+		await disconnectFigmaTeamUseCase.execute(figmaTeam.teamId, jiraCallContext);
 
 		expect(figmaTeamRepository.getByTeamIdAndCloudId).toHaveBeenCalledWith(
 			figmaTeam.teamId,

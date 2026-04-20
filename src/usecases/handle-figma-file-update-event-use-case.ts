@@ -1,6 +1,6 @@
 import { uniqueWith } from '../common/array-utils';
 import { getFeatureFlag, getLDClient } from '../config/launch_darkly';
-import type { ConnectUserInfo } from '../domain/entities';
+import type { ConnectUserInfo, JiraCallContext } from '../domain/entities';
 import { FigmaTeamAuthStatus } from '../domain/entities';
 import { getLogger } from '../infrastructure';
 import {
@@ -11,7 +11,9 @@ import { jiraService } from '../infrastructure/jira';
 import {
 	associatedFigmaDesignRepository,
 	figmaTeamRepository,
+	jiraAppTokenRepository,
 } from '../infrastructure/repositories';
+import { NotFoundRepositoryError } from '../infrastructure/repositories/errors';
 import type { FigmaWebhookInfo } from '../web/routes/figma';
 
 export const handleFigmaFileUpdateEventUseCase = {
@@ -103,5 +105,21 @@ async function syncDesignsToJira(
 
 	if (!designs.length) return;
 
-	await jiraService.submitDesigns(designs, cloudId);
+	// Webhook flow has no inbound FIT, so hydrate JiraCallContext from the
+	// persisted `jira_app_token` row (kept fresh by the Forge scheduledTrigger).
+	let jiraCallContext: JiraCallContext;
+	try {
+		jiraCallContext =
+			await jiraAppTokenRepository.getJiraCallContext(cloudId);
+	} catch (e) {
+		if (e instanceof NotFoundRepositoryError) {
+			getLogger().warn(
+				`No persisted Jira app token for cloudId ${cloudId}; cannot sync designs.`,
+			);
+			return;
+		}
+		throw e;
+	}
+
+	await jiraService.submitDesigns(designs, jiraCallContext);
 }

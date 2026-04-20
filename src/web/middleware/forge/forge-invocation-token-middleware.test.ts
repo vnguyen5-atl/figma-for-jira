@@ -32,6 +32,8 @@ describe('forgeInvocationTokenMiddleware', () => {
 			cloudId: TEST_CLOUD_ID,
 			accountId: TEST_ACCOUNT_ID,
 			isAdminUser: true,
+			apiBaseUrl: `https://api.atlassian.com/ex/jira/${TEST_CLOUD_ID}`,
+			installationId: 'test-installation-id',
 			exp: 9999999999,
 			iat: 0,
 		});

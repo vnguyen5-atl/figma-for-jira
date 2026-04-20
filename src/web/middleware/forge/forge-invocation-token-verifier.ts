@@ -3,12 +3,27 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 const FORGE_JWKS_URL =
 	'https://forge.cdn.prod.atlassian-dev.net/.well-known/jwks.json';
 
+/**
+ * Claims we read from a verified Forge Invocation Token (FIT).
+ *
+ * @see https://developer.atlassian.com/platform/forge/remote/essentials/
+ *      (Forge Invocation Token section)
+ */
 export type ForgeInvocationTokenClaims = {
 	readonly iss: string;
 	readonly aud: string;
 	readonly cloudId: string;
 	readonly accountId?: string;
 	readonly isAdminUser?: boolean;
+	/**
+	 * From the FIT `app.apiBaseUrl` claim — the base URL the remote backend
+	 * MUST use when making outbound calls to Atlassian APIs (e.g. Jira).
+	 *
+	 * @example "https://api.atlassian.com/ex/jira/4c822e2f-..."
+	 */
+	readonly apiBaseUrl: string;
+	/** From the FIT `app.installationId` claim. */
+	readonly installationId?: string;
 	readonly exp: number;
 	readonly iat: number;
 };
@@ -20,7 +35,7 @@ export type ForgeInvocationTokenClaims = {
  * in the Authorization header. The FIT is a signed JWT that can be verified
  * using Atlassian's public JWKS endpoint.
  *
- * @see https://developer.atlassian.com/platform/forge/remote/essentials/#the-forge-invocation-token-fit-
+ * @see https://developer.atlassian.com/platform/forge/remote/essentials/
  */
 export class ForgeInvocationTokenVerifier {
 	private readonly jwks: ReturnType<typeof createRemoteJWKSet>;
@@ -62,6 +77,19 @@ export class ForgeInvocationTokenVerifier {
 			throw new Error('Invalid FIT: missing cloudId claim.');
 		}
 
+		// `apiBaseUrl` and `installationId` live under the nested `app` claim
+		// on the FIT payload, e.g. { app: { apiBaseUrl: "...", installationId: "..." } }.
+		const appClaim = payload['app'];
+		if (typeof appClaim !== 'object' || appClaim === null) {
+			throw new Error('Invalid FIT: missing app claim.');
+		}
+		const appClaimRecord = appClaim as Record<string, unknown>;
+		const apiBaseUrl = appClaimRecord['apiBaseUrl'];
+		if (typeof apiBaseUrl !== 'string') {
+			throw new Error('Invalid FIT: missing app.apiBaseUrl claim.');
+		}
+		const installationId = appClaimRecord['installationId'];
+
 		const accountId = payload['accountId'];
 		const isAdminUser = payload['isAdminUser'];
 
@@ -71,6 +99,9 @@ export class ForgeInvocationTokenVerifier {
 			cloudId,
 			accountId: typeof accountId === 'string' ? accountId : undefined,
 			isAdminUser: typeof isAdminUser === 'boolean' ? isAdminUser : undefined,
+			apiBaseUrl,
+			installationId:
+				typeof installationId === 'string' ? installationId : undefined,
 			exp,
 			iat,
 		};

@@ -14,6 +14,7 @@ import {
 	generateCloudId,
 	generateFigmaDesignIdentifier,
 	generateFigmaFileWebhook,
+	generateJiraCallContext,
 	generateJiraIssueAri,
 	generateJiraIssueId,
 } from '../domain/entities/testing';
@@ -39,7 +40,7 @@ const generateOnDesignDisassociatedWithIssueUseCaseParams = ({
 		id: issueId,
 	},
 	atlassianUserId,
-	cloudId,
+	jiraCallContext: generateJiraCallContext({ cloudId }),
 });
 
 describe('onDesignDisassociatedWithIssueUseCase', () => {
@@ -89,14 +90,14 @@ describe('onDesignDisassociatedWithIssueUseCase', () => {
 
 		expect(
 			associatedFigmaDesignRepository.deleteByDesignIdAndAssociatedWithAriAndCloudId,
-		).toHaveBeenCalledWith(figmaDesignId, params.issue.ari, params.cloudId);
+		).toHaveBeenCalledWith(figmaDesignId, params.issue.ari, params.jiraCallContext.cloudId);
 		expect(
 			figmaBackwardIntegrationServiceV2.tryDeleteDevResourceForJiraIssue,
 		).toHaveBeenCalledWith({
 			figmaDesignId,
 			issueId: params.issue.id,
 			atlassianUserId: params.atlassianUserId,
-			cloudId: params.cloudId,
+			jiraCallContext: params.jiraCallContext,
 		});
 		expect(figmaService.tryDeleteWebhook).toHaveBeenCalledWith(
 			webhooks[0].webhookId,

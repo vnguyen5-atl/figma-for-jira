@@ -2,7 +2,10 @@ import { figmaService, UnauthorizedFigmaServiceError } from './figma';
 import { jiraService } from './jira';
 import { getLogger } from './logger';
 
-import type { FigmaDesignIdentifier } from '../domain/entities';
+import type {
+	FigmaDesignIdentifier,
+	JiraCallContext,
+} from '../domain/entities';
 import { buildJiraIssueUrl } from '../domain/entities';
 
 /**
@@ -20,7 +23,7 @@ export class FigmaBackwardIntegrationServiceV2 {
 		readonly figmaDesignId: FigmaDesignIdentifier;
 		readonly issueId: string;
 		readonly atlassianUserId?: string;
-		readonly cloudId: string;
+		readonly jiraCallContext: JiraCallContext;
 	}): Promise<void> => {
 		// Atlassian User ID should always be provided within the normal business flows.
 		// However, there can be edge cases when the association is removed in from a user-less context on
@@ -31,7 +34,10 @@ export class FigmaBackwardIntegrationServiceV2 {
 			);
 		}
 
-		const issue = await jiraService.getIssue(params.issueId, params.cloudId);
+		const issue = await jiraService.getIssue(
+			params.issueId,
+			params.jiraCallContext,
+		);
 
 		if (!issue) {
 			return getLogger().warn(
@@ -49,7 +55,7 @@ export class FigmaBackwardIntegrationServiceV2 {
 				},
 				user: {
 					atlassianUserId: params.atlassianUserId,
-					cloudId: params.cloudId,
+					cloudId: params.jiraCallContext.cloudId,
 				},
 			});
 		} catch (e) {
@@ -73,7 +79,7 @@ export class FigmaBackwardIntegrationServiceV2 {
 		readonly figmaDesignId: FigmaDesignIdentifier;
 		readonly issueId: string;
 		readonly atlassianUserId?: string;
-		readonly cloudId: string;
+		readonly jiraCallContext: JiraCallContext;
 	}): Promise<void> => {
 		if (!params.atlassianUserId) {
 			return getLogger().warn(
@@ -81,7 +87,10 @@ export class FigmaBackwardIntegrationServiceV2 {
 			);
 		}
 
-		const issue = await jiraService.getIssue(params.issueId, params.cloudId);
+		const issue = await jiraService.getIssue(
+			params.issueId,
+			params.jiraCallContext,
+		);
 
 		if (!issue) {
 			return getLogger().warn(
@@ -98,7 +107,7 @@ export class FigmaBackwardIntegrationServiceV2 {
 				),
 				user: {
 					atlassianUserId: params.atlassianUserId,
-					cloudId: params.cloudId,
+					cloudId: params.jiraCallContext.cloudId,
 				},
 			});
 		} catch (e) {

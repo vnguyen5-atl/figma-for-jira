@@ -6,6 +6,9 @@ app:
 remotes:
   - key: connect
     baseUrl: https://connectie-vnguyen5.public.atlastunnel.com
+    auth:
+      appSystemToken:
+        enabled: true
 
 modules:
   devops:designInfoProvider:
@@ -42,9 +45,20 @@ modules:
     - key: figma-pre-uninstall
       function: pre-uninstall-handler
 
+  scheduledTrigger:
+    - key: figma-refresh-app-tokens
+      function: refresh-app-tokens-handler
+      # Run every 6 hours per installation. Each invocation receives a
+      # fresh `x-forge-oauth-system` header for that installation, which
+      # the handler persists to the `jira_app_token` table for use by
+      # the Figma webhook flow (which has no inbound FIT of its own).
+      interval: six-hours
+
   function:
     - key: pre-uninstall-handler
       handler: src/forge/pre-uninstall.handler
+    - key: refresh-app-tokens-handler
+      handler: src/forge/refresh-app-tokens.handler
 
 resources:
   - key: admin-ui
@@ -52,9 +66,14 @@ resources:
 
 permissions:
   scopes:
+    # Required for: GET /rest/api/3/issue and POST /rest/api/3/permissions/check
     - read:jira-work
-    - write:jira-work
-    - delete:jira-work
+    # Required (Beta; future-mandatory) for: PUT/DELETE /rest/forge/1/app/properties/*
+    - write:app-data:jira
+    # Required to receive the x-forge-oauth-system header on inbound calls
+    - read:app-system-token
+    # Note: scope for POST /rest/designs/1.0/bulk (submit designs) is unverified
+    # — see MIGRATION_PLAN.md "Open questions" for Phase 5.
   external:
     fetch:
       backend:

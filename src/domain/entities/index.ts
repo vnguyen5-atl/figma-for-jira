@@ -5,5 +5,6 @@ export * from './figma-design-identifier';
 export * from './figma-oauth2-user-credentials';
 export * from './figma-team';
 export * from './figma-user';
+export * from './jira-call-context';
 export * from './jira-issue';
 export * from './figma-file-webhook';

@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
 
-import { Duration } from '../../../../common/duration';
 import type { AtlassianProviderUser } from '../../../../domain/entities';
 import {
 	generateFigmaFileKey,
@@ -9,7 +8,6 @@ import {
 	generateJiraIssueKey,
 	generateJiraIssueUrl,
 } from '../../../../domain/entities/testing';
-import type { JwtTokenParams } from '../jwt-utils';
 import type {
 	CheckPermissionsRequest,
 	CheckPermissionsResponse,
@@ -17,21 +15,6 @@ import type {
 	SubmitDesignsRequest,
 	SubmitDesignsResponse,
 } from '../types';
-
-export const MOCK_JWT_TOKEN_PARAMS: JwtTokenParams = {
-	request: {
-		method: 'GET',
-		pathname: `/rest/api/3/issue/${uuidv4()}`,
-		query: {
-			param1: uuidv4,
-		},
-	},
-	connectAppKey: uuidv4(),
-	connectSharedSecret: uuidv4(),
-	expiresIn: Duration.ofMinutes(10),
-};
-
-export const MOCK_JWT_TOKEN = 'test-jwt-token';
 
 export const generateSubmitDesignsRequest = (
 	designs: {

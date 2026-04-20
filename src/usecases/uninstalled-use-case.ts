@@ -1,3 +1,4 @@
+import type { JiraCallContext } from '../domain/entities';
 import { figmaService } from '../infrastructure/figma';
 import { jiraService } from '../infrastructure/jira';
 import {
@@ -15,7 +16,8 @@ import { prismaClient } from '../infrastructure/repositories/prisma-client';
  * Consider making the implementation idempotent and retrying its execution in case of a failure (e.g., using a queue).
  */
 export const uninstalledUseCase = {
-	execute: async (cloudId: string) => {
+	execute: async (jiraCallContext: JiraCallContext) => {
+		const { cloudId } = jiraCallContext;
 		const figmaTeams = await figmaTeamRepository.findManyByCloudId(cloudId);
 
 		await Promise.allSettled(
@@ -49,9 +51,10 @@ export const uninstalledUseCase = {
 					.figmaOAuth2UserCredentials.deleteMany({ where: { cloudId } }),
 				prismaClient.get().figmaTeam.deleteMany({ where: { cloudId } }),
 				prismaClient.get().figmaFileWebhook.deleteMany({ where: { cloudId } }),
+				prismaClient.get().jiraAppToken.deleteMany({ where: { cloudId } }),
 			]);
 
 		// Delete the configuration state of the app since it is being uninstalled
-		await jiraService.deleteAppConfigurationState(cloudId);
+		await jiraService.deleteAppConfigurationState(jiraCallContext);
 	},
 };

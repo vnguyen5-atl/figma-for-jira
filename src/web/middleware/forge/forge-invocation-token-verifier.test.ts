@@ -59,12 +59,16 @@ describe('ForgeInvocationTokenVerifier', () => {
 		verifier.jwks = localJwks;
 	});
 
+	const TEST_API_BASE_URL = `https://api.atlassian.com/ex/jira/${TEST_CLOUD_ID}`;
+	const APP_CLAIM = { apiBaseUrl: TEST_API_BASE_URL };
+
 	describe('valid tokens', () => {
 		it('should return claims for a valid token with accountId and isAdminUser', async () => {
 			const token = await signToken(privateKey, {
 				cloudId: TEST_CLOUD_ID,
 				accountId: TEST_ACCOUNT_ID,
 				isAdminUser: true,
+				app: APP_CLAIM,
 			});
 
 			const claims = await verifier.verify(token, TEST_APP_ID);
@@ -74,11 +78,13 @@ describe('ForgeInvocationTokenVerifier', () => {
 			expect(claims.isAdminUser).toBe(true);
 			expect(claims.aud).toBe(TEST_APP_ID);
 			expect(claims.iss).toBe('forge');
+			expect(claims.apiBaseUrl).toBe(TEST_API_BASE_URL);
 		});
 
 		it('should return claims for a server-to-server token (no accountId or isAdminUser)', async () => {
 			const token = await signToken(privateKey, {
 				cloudId: TEST_CLOUD_ID,
+				app: APP_CLAIM,
 			});
 
 			const claims = await verifier.verify(token, TEST_APP_ID);
@@ -93,7 +99,7 @@ describe('ForgeInvocationTokenVerifier', () => {
 		it('should throw for an expired token', async () => {
 			const token = await signToken(
 				privateKey,
-				{ cloudId: TEST_CLOUD_ID },
+				{ cloudId: TEST_CLOUD_ID, app: APP_CLAIM },
 				{ expiresInSeconds: -1 },
 			);
 
@@ -103,7 +109,7 @@ describe('ForgeInvocationTokenVerifier', () => {
 		it('should throw for a token with wrong audience', async () => {
 			const token = await signToken(
 				privateKey,
-				{ cloudId: TEST_CLOUD_ID },
+				{ cloudId: TEST_CLOUD_ID, app: APP_CLAIM },
 				{ audience: 'ari:cloud:ecosystem::app/wrong-app' },
 			);
 
@@ -111,10 +117,18 @@ describe('ForgeInvocationTokenVerifier', () => {
 		});
 
 		it('should throw for a token missing cloudId', async () => {
-			const token = await signToken(privateKey, {});
+			const token = await signToken(privateKey, { app: APP_CLAIM });
 
 			await expect(verifier.verify(token, TEST_APP_ID)).rejects.toThrow(
 				'Invalid FIT: missing cloudId claim.',
+			);
+		});
+
+		it('should throw for a token missing app.apiBaseUrl', async () => {
+			const token = await signToken(privateKey, { cloudId: TEST_CLOUD_ID });
+
+			await expect(verifier.verify(token, TEST_APP_ID)).rejects.toThrow(
+				'Invalid FIT: missing app claim.',
 			);
 		});
 

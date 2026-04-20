@@ -14,32 +14,19 @@ import type {
 } from './types';
 
 import { assertSchema } from '../../../common/schema-validation';
+import type { JiraCallContext } from '../../../domain/entities';
 import { withAxiosErrorTranslation } from '../../axios-utils';
-
-/**
- * The base URL for Jira API calls in Forge. Forge proxies all calls to this
- * base URL using its own OAuth 2.0 app token (Phase 5).
- *
- * @see https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/
- */
-const JIRA_API_BASE_URL = 'https://api.atlassian.com';
-
-/**
- * Builds the Jira REST API base URL for the given Forge cloud ID.
- */
-const buildBaseUrl = (cloudId: string): string =>
-	`${JIRA_API_BASE_URL}/ex/jira/${cloudId}/`;
 
 /**
  * A Jira API client.
  *
  * @remarks
- * In Phase 4 of the Connect → Forge migration, the inbound `cloudId` parameter
- * replaces `ConnectInstallation`. The outbound auth header is currently a
- * placeholder Bearer token — Phase 5 replaces it with a real Forge OAuth 2.0
- * app access token obtained from the Forge platform.
+ * In Phase 5 of the Connect → Forge migration, every method takes a
+ * {@link JiraCallContext} carrying the Forge-provided `apiBaseUrl` and
+ * `appSystemToken`. The base URL must be exactly the value Forge sends
+ * in the FIT (`app.apiBaseUrl` claim) — NOT a cloudId-derived URL.
  *
- * @see https://developer.atlassian.com/cloud/jira/software/rest/intro/#introduction
+ * @see https://developer.atlassian.com/platform/forge/remote/calling-product-apis
  */
 class JiraClient {
 	/**
@@ -49,16 +36,14 @@ class JiraClient {
 	 */
 	submitDesigns = async (
 		payload: SubmitDesignsRequest,
-		cloudId: string,
+		ctx: JiraCallContext,
 	): Promise<SubmitDesignsResponse> => {
-		const context = { cloudId };
+		const context = { cloudId: ctx.cloudId };
 		return withAxiosErrorTranslation(async () => {
-			const url = new URL('rest/designs/1.0/bulk', buildBaseUrl(cloudId));
+			const url = this.buildUrl(ctx, 'rest/designs/1.0/bulk');
 
-			const response = await axios.post<unknown>(url.toString(), payload, {
-				headers: new AxiosHeaders().setAuthorization(
-					this.buildAuthorizationHeader(),
-				),
+			const response = await axios.post<unknown>(url, payload, {
+				headers: this.buildHeaders(ctx),
 			});
 
 			assertSchema(response.data, SUBMIT_DESIGNS_RESPONSE_SCHEMA);
@@ -74,19 +59,17 @@ class JiraClient {
 	 */
 	getIssue = async (
 		issueIdOrKey: string,
-		cloudId: string,
+		ctx: JiraCallContext,
 	): Promise<GetIssueResponse> => {
-		const context = { issueIdOrKey, cloudId };
+		const context = { issueIdOrKey, cloudId: ctx.cloudId };
 		return withAxiosErrorTranslation(async () => {
-			const url = new URL(
+			const url = this.buildUrl(
+				ctx,
 				`rest/api/3/issue/${encodeURIComponent(issueIdOrKey)}`,
-				buildBaseUrl(cloudId),
 			);
 
-			const response = await axios.get<unknown>(url.toString(), {
-				headers: new AxiosHeaders().setAuthorization(
-					this.buildAuthorizationHeader(),
-				),
+			const response = await axios.get<unknown>(url, {
+				headers: this.buildHeaders(ctx),
 			});
 
 			assertSchema(response.data, GET_ISSUE_RESPONSE_SCHEMA);
@@ -103,18 +86,17 @@ class JiraClient {
 	setAppProperty = async (
 		propertyKey: string,
 		value: unknown,
-		cloudId: string,
+		ctx: JiraCallContext,
 	): Promise<void> => {
-		const context = { propertyKey, cloudId };
+		const context = { propertyKey, cloudId: ctx.cloudId };
 		return withAxiosErrorTranslation(async () => {
-			const url = new URL(
+			const url = this.buildUrl(
+				ctx,
 				`rest/forge/1/app/properties/${encodeURIComponent(propertyKey)}`,
-				buildBaseUrl(cloudId),
 			);
 
-			await axios.put<unknown>(url.toString(), JSON.stringify(value), {
-				headers: new AxiosHeaders()
-					.setAuthorization(this.buildAuthorizationHeader())
+			await axios.put<unknown>(url, JSON.stringify(value), {
+				headers: this.buildHeaders(ctx)
 					.setAccept('application/json')
 					.setContentType('application/json'),
 			});
@@ -128,19 +110,17 @@ class JiraClient {
 	 */
 	deleteAppProperty = async (
 		propertyKey: string,
-		cloudId: string,
+		ctx: JiraCallContext,
 	): Promise<void> => {
-		const context = { propertyKey, cloudId };
+		const context = { propertyKey, cloudId: ctx.cloudId };
 		return withAxiosErrorTranslation(async () => {
-			const url = new URL(
+			const url = this.buildUrl(
+				ctx,
 				`rest/forge/1/app/properties/${encodeURIComponent(propertyKey)}`,
-				buildBaseUrl(cloudId),
 			);
 
-			await axios.delete(url.toString(), {
-				headers: new AxiosHeaders().setAuthorization(
-					this.buildAuthorizationHeader(),
-				),
+			await axios.delete(url, {
+				headers: this.buildHeaders(ctx),
 			});
 		}, context);
 	};
@@ -152,19 +132,14 @@ class JiraClient {
 	 */
 	checkPermissions = async (
 		payload: CheckPermissionsRequest,
-		cloudId: string,
+		ctx: JiraCallContext,
 	): Promise<CheckPermissionsResponse> => {
-		const context = { cloudId };
+		const context = { cloudId: ctx.cloudId };
 		return withAxiosErrorTranslation(async () => {
-			const url = new URL(
-				`rest/api/3/permissions/check`,
-				buildBaseUrl(cloudId),
-			);
+			const url = this.buildUrl(ctx, `rest/api/3/permissions/check`);
 
-			const response = await axios.post<unknown>(url.toString(), payload, {
-				headers: new AxiosHeaders().setAuthorization(
-					this.buildAuthorizationHeader(),
-				),
+			const response = await axios.post<unknown>(url, payload, {
+				headers: this.buildHeaders(ctx),
 			});
 
 			assertSchema(response.data, CHECK_PERMISSIONS_RESPONSE_SCHEMA);
@@ -173,17 +148,15 @@ class JiraClient {
 		}, context);
 	};
 
-	/**
-	 * Builds the Authorization header for outbound Jira API calls.
-	 *
-	 * Currently returns a placeholder. Phase 5 of the migration replaces this
-	 * with a real Forge OAuth 2.0 app access token obtained from the Forge
-	 * platform (`@forge/api` or the equivalent Forge Remote auth flow).
-	 */
-	private buildAuthorizationHeader() {
-		// TODO (Phase 5): obtain a Forge app access token for the request's
-		// cloudId and return `Bearer ${token}`. See MIGRATION_PLAN.md.
-		return 'Bearer FORGE_APP_TOKEN_PLACEHOLDER';
+	private buildUrl(ctx: JiraCallContext, path: string): string {
+		const base = ctx.apiBaseUrl.endsWith('/')
+			? ctx.apiBaseUrl
+			: `${ctx.apiBaseUrl}/`;
+		return new URL(path, base).toString();
+	}
+
+	private buildHeaders(ctx: JiraCallContext): AxiosHeaders {
+		return new AxiosHeaders().setAuthorization(`Bearer ${ctx.appSystemToken}`);
 	}
 }
 

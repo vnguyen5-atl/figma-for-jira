@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import type {
 	FigmaTeamAuthStatus,
 	FigmaTeamSummary,
+	JiraCallContext,
 } from '../../../../domain/entities';
 
 export type ConnectFigmaTeamRouteParams = {
@@ -12,6 +13,7 @@ export type ConnectFigmaTeamRouteParams = {
 type ConnectFigmaTeamLocals = {
 	readonly cloudId: string;
 	readonly accountId: string;
+	readonly jiraCallContext: JiraCallContext;
 };
 
 export type ConnectFigmaTeamRequest = Request<
@@ -40,6 +42,7 @@ export type DisconnectFigmaTeamRouteParams = {
 export type DisconnectFigmaTeamLocals = {
 	readonly cloudId: string;
 	readonly accountId: string;
+	readonly jiraCallContext: JiraCallContext;
 };
 
 export type DisconnectFigmaTeamRequest = Request<
