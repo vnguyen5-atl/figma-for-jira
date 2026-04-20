@@ -1,6 +1,4 @@
-import { type AxiosResponse } from 'axios';
-
-import { axiosRest } from './axiosInstance';
+import { remoteGetJson } from './axiosInstance';
 
 export type FigmaUser = {
 	readonly email: string;
@@ -13,8 +11,7 @@ export type MeResponseBody = {
 
 export async function getAuthMe(
 	atlassianUserId: string,
-): Promise<AxiosResponse<MeResponseBody>> {
-	return await axiosRest.get<MeResponseBody>('/admin/auth/me', {
-		params: { userId: atlassianUserId },
-	});
+): Promise<MeResponseBody> {
+	const params = new URLSearchParams({ userId: atlassianUserId });
+	return await remoteGetJson<MeResponseBody>(`/admin/auth/me?${params}`);
 }

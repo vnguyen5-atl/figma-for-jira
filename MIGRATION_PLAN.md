@@ -431,7 +431,34 @@ token. To handle these:
 - New unit test for the scheduled-trigger handler (mock Forge runtime)
 - `forge-invocation-token-verifier.test.ts` updated for the new claims
 
-### Phase 6 — Admin UI Custom UI migration
+### Phase 6 — Admin UI Custom UI migration (✅ done)
+
+#### Custom UI vs UI Kit — what we're using and why
+
+Forge offers two ways to build UI:
+
+| Aspect | UI Kit | **Custom UI (what we use)** |
+|---|---|---|
+| `manifest.yml` `resource.path` points to | A single `.tsx` resolver file (e.g. `src/frontend/admin.tsx`) | A **directory of pre-built static assets** (e.g. `admin/dist`) containing `index.html` |
+| What you write | React components using only `@forge/react`-exported components (`<Button>`, `<TextField>`, etc.) | Any React/Vue/vanilla JS code, any UI library (`@atlaskit/*`, custom CSS, third-party libs) |
+| What runs at runtime | Forge's React-like runtime, sandboxed inside the host page | Your full bundled JS app inside a Forge-managed iframe |
+| Build step required | None (Forge bundles for you at deploy time) | **Yes** — you must run your bundler (`vite build`, `webpack build`, etc.) so that `dist/` contains `index.html` + assets before `forge deploy` |
+| DOM access | None (Forge owns the DOM) | Full DOM access inside the iframe |
+| Entry point on disk | `.tsx` source file | `dist/index.html` produced by your build |
+| Component restrictions | Limited to `@forge/react` components | None — anything that runs in a browser iframe |
+| Asset paths in built HTML | N/A (Forge handles bundling) | **Must be relative** (`./assets/foo.js`, not `/assets/foo.js`) — Vite needs `base: './'` |
+
+**Why Custom UI for this app:** the existing admin React app uses `@atlaskit/*` components, custom emotion styles, third-party packages like `@tanstack/react-query`, and bespoke layout. UI Kit's component restrictions would force a near-complete rewrite. Custom UI lets us reuse the existing React code essentially unchanged — only the **API/auth layer** at the boundary needs to be swapped (axios + Connect JWT → `requestRemote` from `@forge/bridge`).
+
+**Practical consequence:** when the manifest says `resources: [{ key: admin-ui, path: admin/dist }]`, Forge serves `admin/dist/index.html` (and the assets it references) as a static website inside an iframe. To produce `admin/dist`, we run `cd admin && npm run build`. The TypeScript source files in `admin/src/` are never seen by Forge — only Vite's compiled output is uploaded.
+
+#### Authentication contract
+
+Browser → backend: `requestRemote('connect', { path, method, body, headers })` from `@forge/bridge`. Forge automatically attaches a Forge Invocation Token (FIT) as the `Authorization: Bearer …` header on the request to our remote backend. The FIT carries `cloudId`, `accountId`, `isAdminUser`, and `app.apiBaseUrl` claims, all of which our existing `forgeInvocationTokenMiddleware` already extracts into `res.locals`. **No change to the backend is needed.**
+
+Browser → Atlassian context: `view.getContext()` from `@forge/bridge`. Returns `cloudId`, `accountId`, plus other context but **does NOT return `isAdminUser`** (verified against the `@forge/bridge` `view` docs). Admin authorization is enforced server-side by the FIT's `isAdminUser` claim — every admin API call returns 401/403 if the user isn't an admin, so no client-side admin check is needed.
+
+#### Files changed in this phase
 
 Migrate the React admin frontend to Forge Custom UI using
 `@forge/bridge`.

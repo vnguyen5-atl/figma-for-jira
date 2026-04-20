@@ -1,12 +1,14 @@
-export function getAppBasePath(): string | undefined {
-	return import.meta.env.VITE_FIGMA_FOR_JIRA_APP_BASE_PATH;
-}
-
+/**
+ * Returns a path to a static asset bundled with the admin Custom UI.
+ *
+ * In Custom UI, files placed under `admin/public/` are copied to the root
+ * of the build output (`admin/dist/`) by Vite. Because Custom UI iframes
+ * load assets from a Forge CDN with relative paths (Vite `base: './'`),
+ * we just prefix with `./`.
+ *
+ * Example: `getAppPath('jira-logo.svg')` -> `'./jira-logo.svg'`.
+ */
 export function getAppPath(path: string): string {
-	const appBasePath = getAppBasePath();
-	if (appBasePath) {
-		return `${appBasePath}${path}`;
-	}
-
-	return path;
+	const trimmed = path.replace(/^\/+/, '').replace(/^static\/admin\//, '');
+	return `./${trimmed}`;
 }

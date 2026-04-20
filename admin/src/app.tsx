@@ -16,7 +16,7 @@ export function App() {
 	const getAuthMeQuery = useQuery({
 		queryKey: ['authMe', atlassianAccountId],
 		queryFn: async () => {
-			return (await getAuthMe(atlassianAccountId ?? '')).data;
+			return await getAuthMe(atlassianAccountId ?? '');
 		},
 		enabled: atlassianAccountId != null,
 	});
