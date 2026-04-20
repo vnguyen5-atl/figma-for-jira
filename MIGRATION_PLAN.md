@@ -229,18 +229,178 @@ Connect-only test mocks deleted:
       - `src/usecases/disconnect-figma-team-use-case.test.ts`
       - `src/usecases/uninstalled-use-case.test.ts`
 
-### Phase 5 — Outbound Jira API auth migration (next)
+### Phase 5 — Outbound Jira API auth migration (in progress)
 
 Replace the placeholder `Bearer FORGE_APP_TOKEN_PLACEHOLDER` in
-`jiraClient.buildAuthorizationHeader` with a real Forge app access
-token.
+`jiraClient` with a real Forge **app system token**, and replace the
+cloudId-derived URL with the **`apiBaseUrl`** that Forge provides.
 
-- Update `src/infrastructure/jira/jira-client/jira-client.ts` to obtain
-  an OAuth 2.0 app access token from Forge for the given `cloudId`,
-  using `@forge/api` or the Forge Remote OAuth flow
-- Delete `src/infrastructure/jira/jira-client/jwt-utils.ts` (the legacy
-  symmetric JWT signing utility — no longer used after Phase 4)
-- Update `jiraClient` unit tests for the new auth header
+> ⚠️ **Significant correction from the original Phase 5 outline.**
+>
+> The original plan (drafted before consulting the docs) described
+> building a `forgeAppTokenProvider` that exchanges client credentials
+> for OAuth 2.0 access tokens via Atlassian's token endpoint. **This
+> was wrong.** Forge does not work that way for Forge Remote backends.
+>
+> The correct mechanism, verified against the Forge docs, is:
+>
+> 1. Declare `auth.appSystemToken.enabled: true` on the `connect`
+>    remote in `manifest.yml`.
+> 2. Add the `read:app-system-token` scope to `permissions.scopes`.
+> 3. Forge then automatically attaches an `x-forge-oauth-system` header
+>    on every inbound call to your remote (the system token JWT).
+> 4. The remote takes that header value and uses it directly as the
+>    `Authorization: Bearer ...` header on outbound Jira API calls.
+> 5. The Jira API base URL is provided in the FIT under the
+>    `app.apiBaseUrl` claim. The remote must use that exact URL — **NOT**
+>    `https://api.atlassian.com/ex/jira/{cloudId}/...` (which is what
+>    Phase 4 left in the codebase as a placeholder).
+>
+> So Phase 5 is structurally simpler than originally described: there is
+> no token exchange, no caching, no async work added to `jiraClient`.
+> Just thread two values (`apiBaseUrl`, `appSystemToken`) through from
+> the FIT/headers to the outbound call sites.
+
+> ⚠️ **OAuth client credentials, `forge providers configure`, etc., are
+> NOT applicable.** Those are for declaring _external_ OAuth providers
+> (e.g., authenticating to GitHub from your Forge app), not for
+> Atlassian → Forge auth. The original plan also incorrectly proposed
+> these.
+
+#### Verified scope changes
+
+The current manifest scopes (`read/write/delete:jira-work`) are wrong
+for what this app actually does. Verified against the Atlassian Jira
+Cloud REST API docs:
+
+| Outbound call | Required scope |
+|---|---|
+| `GET /rest/api/3/issue/{idOrKey}` | Classic: `read:jira-work` ✅ |
+| `POST /rest/api/3/permissions/check` | Classic: `read:jira-work` ✅ |
+| `PUT /rest/forge/1/app/properties/{key}` | New (recommended; future-mandatory): `write:app-data:jira` |
+| `DELETE /rest/forge/1/app/properties/{key}` | Same as PUT: `write:app-data:jira` |
+| `POST /rest/designs/1.0/bulk` (submit designs) | ⚠️ **Unknown** — see "Open questions" below |
+
+Plus: `read:app-system-token` must be added to enable the Forge system
+token header.
+
+So the manifest's `permissions.scopes` becomes:
+
+```yaml
+permissions:
+  scopes:
+    - read:jira-work
+    - write:app-data:jira
+    - read:app-system-token
+```
+
+`write:jira-work` and `delete:jira-work` are **removed** (no outbound
+call needs them).
+
+#### What we are building (Option A: persist + scheduled refresh)
+
+The user-driven flows (admin, entities, auth, lifecycle) all have a
+fresh `x-forge-oauth-system` header on the inbound request, so they can
+use the token directly. The hard part is the **Figma webhook flows**
+(`POST /figma/webhook`, `POST /figma/webhook/file`), which are called
+by Figma directly — not by Forge — so they have no inbound FIT/system
+token. To handle these:
+
+1. **Persist the system token + apiBaseUrl per cloudId** every time we
+   see a fresh one on a user-driven inbound request.
+2. **Add a scheduled-trigger Forge function** that periodically refreshes
+   these persisted tokens (per the docs' explicit recommendation).
+3. **Webhook handlers look up** the persisted `(apiBaseUrl,
+   appSystemToken)` by cloudId when they need to call Jira.
+
+#### Files to change
+
+- `manifest.yml` — add `auth.appSystemToken.enabled: true` on the
+  `connect` remote; add `read:app-system-token` and
+  `write:app-data:jira` scopes; remove `write:jira-work` and
+  `delete:jira-work`; add `scheduledTrigger` Forge module + function
+  for token refresh
+- `src/web/middleware/forge/forge-invocation-token-verifier.ts` —
+  extract `app.apiBaseUrl` and `app.installationId` from the FIT claims
+- `src/web/middleware/forge/forge-invocation-token-middleware.ts` —
+  read the `x-forge-oauth-system` header; build a
+  `JiraCallContext = { cloudId, apiBaseUrl, appSystemToken }` object
+  on `res.locals.jiraCallContext`
+- `src/infrastructure/jira/jira-client/jira-client.ts` — every method
+  now takes a `JiraCallContext` instead of a `cloudId`. URL is
+  `${ctx.apiBaseUrl}/...`. Authorization header is
+  `Bearer ${ctx.appSystemToken}`. Delete the placeholder helper.
+- `src/infrastructure/jira/jira-design-service.ts`,
+  `jira-issue-service.ts`, `jira-user-service.ts`,
+  `jira-app-configuration-service.ts` — methods take `JiraCallContext`
+- `src/web/routes/**/*-router.ts` — read `jiraCallContext` from
+  `res.locals` and pass to use cases / services
+- `src/usecases/*.ts` (those that perform outbound Jira calls) —
+  signatures take `JiraCallContext`
+- **New** `prisma/schema.prisma` change + migration — add a
+  `jira_app_token` table keyed by `cloudId`, storing
+  `(apiBaseUrl, appSystemToken, expiresAt)`
+- **New** `src/infrastructure/repositories/jira-app-token-repository.ts`
+- **New** `src/forge/refresh-app-tokens.ts` — Forge `scheduledTrigger`
+  function that refreshes persisted tokens
+- `src/infrastructure/jira/jira-client/jwt-utils.ts` + test — **delete**
+  (legacy Connect JWT signing, unused after Phase 4)
+- `src/web/testing/forge-invocation-token-mocks.ts` — add `app.apiBaseUrl`
+  to the test FIT; add a helper to mock `x-forge-oauth-system`
+- All Jira service / use case / route tests — update to pass
+  `JiraCallContext` instead of `cloudId` for outbound paths
+
+#### ⚠️ Open questions / unknowns to validate during deployment
+
+1. **Designs API (`POST /rest/designs/1.0/bulk`) scope** — not found in
+   the public Jira swagger I searched. May not require a granular
+   scope, may require a manifest-level declaration via
+   `devops:designInfoProvider`, or may need a scope I haven't
+   identified. **Recommend:** leave un-scoped initially; add scopes
+   reactively if 403s appear in deployment.
+2. **`permissions/check` under Forge `asApp`** — the docs explicitly
+   note Connect-app behaviour ("can obtain permission details for any
+   user without admin permission"), but don't state whether Forge
+   `asApp` calls have the same special permission. **Recommend:** test
+   in deployment; if it doesn't work, fall back to using the FIT's own
+   admin claim (which we already extract in the middleware) instead
+   of calling Jira to check.
+3. **Token persistence + refresh contract** — the docs recommend a
+   scheduled trigger for token refresh but don't show a complete
+   worked example. Specifically unclear:
+   - **Token expiry duration** — the docs say the JWT's `exp` claim
+     governs lifetime, but no specific TTL guarantee is documented.
+   - **Refresh mechanism** — there is no proactive "refresh this
+     token" API; the recommended pattern is to schedule periodic
+     invocations of a Forge function and capture/store the fresh token
+     each time. Implementation detail: this means the scheduled
+     trigger function itself needs to know which cloudIds to refresh
+     for, and Forge will give it a system token scoped to whatever
+     cloudId/installation context the trigger runs in.
+   - **Multi-tenant fan-out** — for an app installed on N tenants, the
+     scheduled trigger fires once per installation (per Forge's
+     standard event semantics). Each invocation gets its own
+     installation-scoped FIT + system token, which we then persist.
+4. **Token security / handling** — persisting bearer tokens in our
+   database introduces a credential-storage risk. Need to:
+   - Encrypt at rest (or rely on DB-level encryption)
+   - Set a short retention (delete on uninstall, expire stale)
+   - Audit access
+   - Decide whether the existing PostgreSQL is appropriate or whether
+     a secret store is more suitable. **Recommend:** flag as a
+     pre-deployment hardening task.
+5. **Webhook flow degradation** — if the persisted token is expired
+   (and the scheduled trigger hasn't refreshed it yet), webhook-driven
+   Jira calls will fail. Need a graceful fallback (e.g., enqueue the
+   webhook event and retry once the token is refreshed). **Recommend:**
+   implement a simple retry-with-DLQ pattern in a follow-up.
+
+#### Test verification
+
+- Unit tests must continue to pass after the refactor
+- New unit tests for the `jira_app_token` repository
+- New unit test for the scheduled-trigger handler (mock Forge runtime)
+- `forge-invocation-token-verifier.test.ts` updated for the new claims
 
 ### Phase 6 — Admin UI Custom UI migration
 
