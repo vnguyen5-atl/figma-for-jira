@@ -4,7 +4,7 @@ import type {
 	AssociatedFigmaDesign,
 	AssociatedFigmaDesignCreateParams,
 	AtlassianDesign,
-	ConnectUserInfo,
+	AtlassianUserInfo,
 	FigmaFileWebhook,
 	FigmaOAuth2UserCredentialsCreateParams,
 	FigmaTeamCreateParams,
@@ -125,10 +125,10 @@ export const generateFigmaOAuth2UserCredentials = ({
 		cloudId,
 	);
 
-export const generateConnectUserInfo = ({
+export const generateAtlassianUserInfo = ({
 	atlassianUserId = uuidv4(),
 	cloudId = generateCloudId(),
-} = {}): ConnectUserInfo => ({
+} = {}): AtlassianUserInfo => ({
 	atlassianUserId,
 	cloudId,
 });

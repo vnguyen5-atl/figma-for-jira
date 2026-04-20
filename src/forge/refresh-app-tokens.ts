@@ -13,13 +13,7 @@
  * @see MIGRATION_PLAN.md — Phase 5 "Open questions" for the unknowns.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-const forgeApi = require('@forge/api') as {
-	fetch: (
-		url: string,
-		init?: { method?: string; headers?: Record<string, string>; body?: string },
-	) => Promise<{ ok: boolean; status: number }>;
-};
+import { fetch } from '@forge/api';
 
 /**
  * The remote backend URL is read from a Forge environment variable
@@ -35,10 +29,10 @@ export const handler = async (): Promise<void> => {
 		return;
 	}
 
-	// `forgeApi.fetch` automatically attaches the FIT and (when the remote
-	// has appSystemToken enabled) the x-forge-oauth-system header to the
-	// outbound request, so the remote middleware will persist them.
-	const response = await forgeApi.fetch(
+	// `@forge/api`'s `fetch` automatically attaches the FIT and (when the
+	// remote has appSystemToken enabled) the x-forge-oauth-system header to
+	// the outbound request, so the remote middleware will persist them.
+	const response = await fetch(
 		`${REMOTE_URL}/lifecycleEvents/refresh-app-token`,
 		{
 			method: 'POST',

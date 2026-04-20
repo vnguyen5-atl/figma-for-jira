@@ -1,6 +1,6 @@
 import { uniqueWith } from '../common/array-utils';
 import { getFeatureFlag, getLDClient } from '../config/launch_darkly';
-import type { ConnectUserInfo, JiraCallContext } from '../domain/entities';
+import type { AtlassianUserInfo, JiraCallContext } from '../domain/entities';
 import { FigmaTeamAuthStatus } from '../domain/entities';
 import { getLogger } from '../infrastructure';
 import {
@@ -85,7 +85,7 @@ export const handleFigmaFileUpdateEventUseCase = {
 async function syncDesignsToJira(
 	fileKey: string,
 	cloudId: string,
-	adminInfo: ConnectUserInfo,
+	adminInfo: AtlassianUserInfo,
 ): Promise<void> {
 	const associatedFigmaDesigns =
 		await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(

@@ -89,5 +89,8 @@
 	},
 	"workspaces": [
 		"admin"
-	]
+	],
+	"optionalDependencies": {
+		"@forge/api": "^7.1.3"
+	}
 }

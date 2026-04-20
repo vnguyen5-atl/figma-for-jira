@@ -24,7 +24,7 @@ import { tryParseUrl } from '../../common/url-utils';
 import { buildAppUrl } from '../../config';
 import type {
 	AtlassianDesign,
-	ConnectUserInfo,
+	AtlassianUserInfo,
 	FigmaDesignIdentifier,
 	FigmaFileWebhookEventType,
 	FigmaOAuth2UserCredentials,
@@ -42,7 +42,7 @@ export class FigmaService {
 	/**
 	 * Returns the user that authorized the app to access Figma and null if the user is not authorized.
 	 */
-	getCurrentUser = async (user: ConnectUserInfo): Promise<FigmaUser | null> => {
+	getCurrentUser = async (user: AtlassianUserInfo): Promise<FigmaUser | null> => {
 		try {
 			return await this.withErrorTranslation(async () => {
 				const credentials = await figmaAuthService.getCredentials(user);
@@ -66,7 +66,7 @@ export class FigmaService {
 	 */
 	getDesign = async (
 		designId: FigmaDesignIdentifier,
-		user: ConnectUserInfo,
+		user: AtlassianUserInfo,
 	): Promise<AtlassianDesign | null> =>
 		this.withErrorTranslation(async () => {
 			const credentials = await figmaAuthService.getCredentials(user);
@@ -90,7 +90,7 @@ export class FigmaService {
 	 */
 	getDesignOrParent = async (
 		designId: FigmaDesignIdentifier,
-		user: ConnectUserInfo,
+		user: AtlassianUserInfo,
 	): Promise<AtlassianDesign | null> =>
 		this.withErrorTranslation(async () => {
 			const credentials = await figmaAuthService.getCredentials(user);
@@ -122,7 +122,7 @@ export class FigmaService {
 	 */
 	getAvailableDesignsFromSameFile = async (
 		designIds: FigmaDesignIdentifier[],
-		user: ConnectUserInfo,
+		user: AtlassianUserInfo,
 	): Promise<AtlassianDesign[]> =>
 		this.withErrorTranslation(async () => {
 			if (!designIds.length) return [];
@@ -196,7 +196,7 @@ export class FigmaService {
 			key: string;
 			title: string;
 		};
-		user: ConnectUserInfo;
+		user: AtlassianUserInfo;
 	}): Promise<void> =>
 		this.withErrorTranslation(async () => {
 			const { accessToken } = await figmaAuthService.getCredentials(user);
@@ -236,7 +236,7 @@ export class FigmaService {
 	}: {
 		designId: FigmaDesignIdentifier;
 		devResourceUrl: URL;
-		user: ConnectUserInfo;
+		user: AtlassianUserInfo;
 	}): Promise<void> => {
 		try {
 			const { accessToken } = await figmaAuthService.getCredentials(user);
@@ -287,7 +287,7 @@ export class FigmaService {
 	createFileUpdateWebhook = async (
 		teamId: string,
 		passcode: string,
-		user: ConnectUserInfo,
+		user: AtlassianUserInfo,
 	): Promise<{ webhookId: string; teamId: string }> =>
 		this.withErrorTranslation(async () => {
 			const { accessToken } = await figmaAuthService.getCredentials(user);
@@ -332,7 +332,7 @@ export class FigmaService {
 		fileKey: string,
 		eventType: FigmaFileWebhookEventType,
 		passcode: string,
-		user: ConnectUserInfo,
+		user: AtlassianUserInfo,
 	): Promise<PostWebhookResponse> => {
 		const { accessToken } = await figmaAuthService.getCredentials(user);
 		const postWebhookRequest: PostWebhookRequestBody = {
@@ -381,7 +381,7 @@ export class FigmaService {
 	 */
 	tryDeleteWebhook = async (
 		webhookId: string,
-		user: ConnectUserInfo,
+		user: AtlassianUserInfo,
 	): Promise<void> =>
 		this.withErrorTranslation(async () => {
 			try {
@@ -408,7 +408,7 @@ export class FigmaService {
 	 */
 	getTeamName = async (
 		teamId: string,
-		user: ConnectUserInfo,
+		user: AtlassianUserInfo,
 	): Promise<string> =>
 		this.withErrorTranslation(async () => {
 			const { accessToken } = await figmaAuthService.getCredentials(user);

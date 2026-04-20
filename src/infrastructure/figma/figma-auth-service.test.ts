@@ -15,7 +15,7 @@ import { Duration } from '../../common/duration';
 import { getConfig } from '../../config';
 import {
 	generateCloudId,
-	generateConnectUserInfo,
+	generateAtlassianUserInfo,
 	generateFigmaOAuth2UserCredentials,
 } from '../../domain/entities/testing';
 import { figmaOAuth2UserCredentialsRepository } from '../repositories';
@@ -36,7 +36,7 @@ describe('FigmaAuthService', () => {
 
 	describe('createCredentials', () => {
 		it('should fetch and store credentials', async () => {
-			const connectUserInfo = generateConnectUserInfo();
+			const connectUserInfo = generateAtlassianUserInfo();
 			const getOAuth2TokenResponse = generateGetOAuth2TokenResponse();
 			const credentials = generateFigmaOAuth2UserCredentials({
 				atlassianUserId: connectUserInfo.atlassianUserId,
@@ -70,7 +70,7 @@ describe('FigmaAuthService', () => {
 
 	describe('getCredentials', () => {
 		it('should return credentials when it is not expired', async () => {
-			const connectUserInfo = generateConnectUserInfo();
+			const connectUserInfo = generateAtlassianUserInfo();
 			const credentials = generateFigmaOAuth2UserCredentials({
 				expiresAt: new Date(
 					Date.now() + Duration.ofMinutes(10000).asMilliseconds,
@@ -95,7 +95,7 @@ describe('FigmaAuthService', () => {
 			const now = Date.now();
 			jest.setSystemTime(now);
 
-			const connectUserInfo = generateConnectUserInfo();
+			const connectUserInfo = generateAtlassianUserInfo();
 			const credentials = generateFigmaOAuth2UserCredentials({
 				expiresAt: new Date(now - Duration.ofMinutes(30).asMilliseconds),
 				atlassianUserId: connectUserInfo.atlassianUserId,
@@ -134,7 +134,7 @@ describe('FigmaAuthService', () => {
 		});
 
 		it('should throw when no credentials', async () => {
-			const connectUserInfo = generateConnectUserInfo();
+			const connectUserInfo = generateAtlassianUserInfo();
 			jest
 				.spyOn(figmaOAuth2UserCredentialsRepository, 'get')
 				.mockRejectedValue(
@@ -151,7 +151,7 @@ describe('FigmaAuthService', () => {
 		it('should throw when refreshing expired credentials fails', async () => {
 			const now = Date.now();
 			jest.setSystemTime(now);
-			const connectUserInfo = generateConnectUserInfo();
+			const connectUserInfo = generateAtlassianUserInfo();
 			const credentials = generateFigmaOAuth2UserCredentials({
 				expiresAt: new Date(now - Duration.ofMinutes(30).asMilliseconds),
 				atlassianUserId: connectUserInfo.atlassianUserId,

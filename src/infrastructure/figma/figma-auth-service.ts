@@ -14,7 +14,7 @@ import { assertSchema } from '../../common/schema-validation';
 import { ensureString } from '../../common/string-utils';
 import { getConfig } from '../../config';
 import type {
-	ConnectUserInfo,
+	AtlassianUserInfo,
 	FigmaOAuth2UserCredentials,
 } from '../../domain/entities';
 import {
@@ -53,7 +53,7 @@ export class FigmaAuthService {
 	 */
 	createCredentials = async (
 		code: string,
-		user: ConnectUserInfo,
+		user: AtlassianUserInfo,
 	): Promise<FigmaOAuth2UserCredentials> => {
 		const response = await figmaClient.getOAuth2Token(code);
 
@@ -72,7 +72,7 @@ export class FigmaAuthService {
 	 * @throws {MissingOrInvalidCredentialsFigmaAuthServiceError} Credentials are invalid or missing.
 	 */
 	getCredentials = async (
-		user: ConnectUserInfo,
+		user: AtlassianUserInfo,
 	): Promise<FigmaOAuth2UserCredentials> => {
 		let credentials: FigmaOAuth2UserCredentials;
 

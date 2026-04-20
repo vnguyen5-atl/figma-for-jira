@@ -1,4 +1,4 @@
-import type { ConnectUserInfo } from './connect-user-info';
+import type { AtlassianUserInfo } from './atlassian-user-info';
 
 export enum FigmaTeamAuthStatus {
 	OK = 'OK',
@@ -6,7 +6,7 @@ export enum FigmaTeamAuthStatus {
 }
 
 export class FigmaTeam {
-	readonly #adminInfo: ConnectUserInfo;
+	readonly #adminInfo: AtlassianUserInfo;
 	readonly id: string;
 	readonly webhookId: string;
 	readonly webhookPasscode: string;

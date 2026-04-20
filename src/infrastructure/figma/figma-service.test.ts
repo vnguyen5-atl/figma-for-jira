@@ -33,7 +33,7 @@ import {
 import { getConfig } from '../../config';
 import { FigmaFileWebhookEventType } from '../../domain/entities';
 import {
-	generateConnectUserInfo,
+	generateAtlassianUserInfo,
 	generateFigmaDesignIdentifier,
 	generateFigmaFileKey,
 	generateFigmaNodeId,
@@ -50,7 +50,7 @@ import {
 } from '../http-client-errors';
 
 describe('FigmaService', () => {
-	const MOCK_CONNECT_USER_INFO = generateConnectUserInfo();
+	const MOCK_CONNECT_USER_INFO = generateAtlassianUserInfo();
 	const MOCK_CREDENTIALS = generateFigmaOAuth2UserCredentials({
 		atlassianUserId: MOCK_CONNECT_USER_INFO.atlassianUserId,
 		cloudId: MOCK_CONNECT_USER_INFO.cloudId,
