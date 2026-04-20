@@ -1,0 +1,62 @@
+app:
+  id: ari:cloud:ecosystem::app/invalid-run-forge-register
+  connect:
+    key: com.figma.jira-add-on
+    remote: connect
+    authentication: jwt
+  runtime:
+    name: nodejs20.x
+remotes:
+  - key: connect
+    baseUrl: https://connectie-vnguyen5.public.atlastunnel.com
+connectModules:
+  jira:lifecycle:
+    - key: lifecycle-events
+      installed: /lifecycleEvents/installed
+      uninstalled: /lifecycleEvents/uninstalled
+  jira:configurePage:
+    - key: figma-configure
+      name:
+        value: Configure
+      url: static/admin
+      conditions:
+        - condition: user_is_admin
+  jira:webSections:
+    - key: figma-addon-admin-section
+      name:
+        value: Figma for JIRA Cloud
+      location: admin_plugins_menu
+  jira:adminPages:
+    - key: figma-addon-admin-section-configure
+      name:
+        value: Configure
+      location: admin_plugins_menu/figma-addon-admin-section
+      url: static/admin
+      conditions:
+        - condition: user_is_admin
+  jira:jiraDesignInfoProvider:
+    - homeUrl: https://www.figma.com/
+      name:
+        value: Figma
+      key: figma-integration
+      handledDomainName: figma.com
+      logoUrl: https://connectie-vnguyen5.public.atlastunnel.com/static/figma-logo.svg
+      documentationUrl: https://help.figma.com/hc/en-us/articles/360039827834-Jira-and-Figma
+      actions:
+        getEntityByUrl:
+          templateUrl: >-
+            https://connectie-vnguyen5.public.atlastunnel.com/entities/getEntityByUrl
+        onEntityAssociated:
+          templateUrl: >-
+            https://connectie-vnguyen5.public.atlastunnel.com/entities/onEntityAssociated
+        onEntityDisassociated:
+          templateUrl: >-
+            https://connectie-vnguyen5.public.atlastunnel.com/entities/onEntityDisassociated
+        checkAuth:
+          templateUrl: https://connectie-vnguyen5.public.atlastunnel.com/auth/checkAuth
+permissions:
+  scopes:
+    - read:connect-jira
+    - write:connect-jira
+    - delete:connect-jira
+modules: {}
