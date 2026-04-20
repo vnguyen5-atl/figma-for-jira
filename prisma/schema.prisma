@@ -7,32 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model ConnectInstallation {
-  id                         BigInt                       @id @default(autoincrement())
-  key                        String
-  clientKey                  String                       @unique @map("client_key")
-  sharedSecret               String                       @map("shared_secret")
-  baseUrl                    String                       @map("base_url")
-  displayUrl                 String                       @map("display_url")
-  FigmaOAuth2UserCredentials FigmaOAuth2UserCredentials[]
-  FigmaTeam                  FigmaTeam[]
-  AssociatedFigmaDesign      AssociatedFigmaDesign[]
-  FigmaFileWebhook           FigmaFileWebhook[]
-
-  @@map("jira_connect_installation")
-}
-
 model AssociatedFigmaDesign {
   id                BigInt  @id @default(autoincrement())
   fileKey           String  @map("file_key")
   nodeId            String  @map("node_id") // Prisma does not support nullable columns with the composite indexes: https://github.com/prisma/prisma/issues/3197
   associatedWithAri String  @map("associated-with-ari")
   inputUrl          String? @map("input_url")
+  cloudId           String  @map("cloud_id")
 
-  connectInstallation   ConnectInstallation @relation(fields: [connectInstallationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  connectInstallationId BigInt              @map("connect_installation_id")
-
-  @@unique([fileKey, nodeId, associatedWithAri, connectInstallationId])
+  @@unique([fileKey, nodeId, associatedWithAri, cloudId])
+  @@index([cloudId])
   @@map("jira_associated_figma_design")
 }
 
@@ -42,11 +26,10 @@ model FigmaOAuth2UserCredentials {
   accessToken     String   @map("access_token")
   refreshToken    String   @map("refresh_token")
   expiresAt       DateTime @map("expires_at") @db.Timestamptz
+  cloudId         String   @map("cloud_id")
 
-  connectInstallation   ConnectInstallation @relation(fields: [connectInstallationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  connectInstallationId BigInt              @map("connect_installation_id")
-
-  @@unique([atlassianUserId, connectInstallationId])
+  @@unique([atlassianUserId, cloudId])
+  @@index([cloudId])
   @@map("jira_figma_oauth2_user_credentials")
 }
 
@@ -65,26 +48,24 @@ model FigmaTeam {
   teamName                  String              @map("team_name")
   figmaAdminAtlassianUserId String              @map("figma_admin_atlassian_user_id") // Atlassian user ID of the Figma team admin that configured the webhook
   authStatus                FigmaTeamAuthStatus
+  cloudId                   String              @map("cloud_id")
 
-  connectInstallation   ConnectInstallation @relation(fields: [connectInstallationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  connectInstallationId BigInt              @map("connect_installation_id")
-
-  @@unique([teamId, connectInstallationId])
+  @@unique([teamId, cloudId])
+  @@index([cloudId])
   @@map("jira_figma_team")
 }
 
 model FigmaFileWebhook {
-  id                        BigInt              @id @default(autoincrement())
-  webhookId                 String              @unique @map("webhook_id")
-  webhookPasscode           String              @map("webhook_passcode")
-  eventType                 WebhookEventType    @map("event_type")
-  fileKey                   String              @map("file_key")
-  creatorAtlassianUserId    String              @map("creator_atlassian_user_id") // Atlassian user ID of the Figma user that configured the webhook
+  id                     BigInt           @id @default(autoincrement())
+  webhookId              String           @unique @map("webhook_id")
+  webhookPasscode        String           @map("webhook_passcode")
+  eventType              WebhookEventType @map("event_type")
+  fileKey                String           @map("file_key")
+  creatorAtlassianUserId String           @map("creator_atlassian_user_id") // Atlassian user ID of the Figma user that configured the webhook
+  cloudId                String           @map("cloud_id")
 
-  connectInstallation   ConnectInstallation @relation(fields: [connectInstallationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  connectInstallationId BigInt              @map("connect_installation_id")
-
-  @@unique([fileKey, eventType, connectInstallationId])
+  @@unique([fileKey, eventType, cloudId])
+  @@index([cloudId])
   @@map("jira_figma_file_webhook")
 }
 
@@ -92,5 +73,5 @@ enum WebhookEventType {
   FILE_UPDATE
   DEV_MODE_STATUS_UPDATE
 
-   @@map("jira_figma_webhook_event_type")
+  @@map("jira_figma_webhook_event_type")
 }

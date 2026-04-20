@@ -38,19 +38,13 @@ modules:
         endpoint: connect
       useAsConfig: true
 
-  trigger:
-    - key: figma-installed
-      function: lifecycle-handler
-      events:
-        - avi:forge:installed:app
-
   preUninstall:
     - key: figma-pre-uninstall
-      function: lifecycle-handler
+      function: pre-uninstall-handler
 
   function:
-    - key: lifecycle-handler
-      handler: src/forge/lifecycle.handler
+    - key: pre-uninstall-handler
+      handler: src/forge/pre-uninstall.handler
 
 resources:
   - key: admin-ui
