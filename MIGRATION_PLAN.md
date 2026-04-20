@@ -229,7 +229,7 @@ Connect-only test mocks deleted:
       - `src/usecases/disconnect-figma-team-use-case.test.ts`
       - `src/usecases/uninstalled-use-case.test.ts`
 
-### Phase 5 — Outbound Jira API auth migration (in progress)
+### Phase 5 — Outbound Jira API auth migration (✅ done)
 
 Replace the placeholder `Bearer FORGE_APP_TOKEN_PLACEHOLDER` in
 `jiraClient` with a real Forge **app system token**, and replace the
