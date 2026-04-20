@@ -1,4 +1,3 @@
-import type { Method } from 'axios';
 import axios, { AxiosHeaders } from 'axios';
 
 import {
@@ -58,7 +57,7 @@ class JiraClient {
 
 			const response = await axios.post<unknown>(url.toString(), payload, {
 				headers: new AxiosHeaders().setAuthorization(
-					this.buildAuthorizationHeader('POST', url, cloudId),
+					this.buildAuthorizationHeader(),
 				),
 			});
 
@@ -86,7 +85,7 @@ class JiraClient {
 
 			const response = await axios.get<unknown>(url.toString(), {
 				headers: new AxiosHeaders().setAuthorization(
-					this.buildAuthorizationHeader('GET', url, cloudId),
+					this.buildAuthorizationHeader(),
 				),
 			});
 
@@ -115,7 +114,7 @@ class JiraClient {
 
 			await axios.put<unknown>(url.toString(), JSON.stringify(value), {
 				headers: new AxiosHeaders()
-					.setAuthorization(this.buildAuthorizationHeader('PUT', url, cloudId))
+					.setAuthorization(this.buildAuthorizationHeader())
 					.setAccept('application/json')
 					.setContentType('application/json'),
 			});
@@ -140,7 +139,7 @@ class JiraClient {
 
 			await axios.delete(url.toString(), {
 				headers: new AxiosHeaders().setAuthorization(
-					this.buildAuthorizationHeader('DELETE', url, cloudId),
+					this.buildAuthorizationHeader(),
 				),
 			});
 		}, context);
@@ -164,7 +163,7 @@ class JiraClient {
 
 			const response = await axios.post<unknown>(url.toString(), payload, {
 				headers: new AxiosHeaders().setAuthorization(
-					this.buildAuthorizationHeader('POST', url, cloudId),
+					this.buildAuthorizationHeader(),
 				),
 			});
 
@@ -181,13 +180,9 @@ class JiraClient {
 	 * with a real Forge OAuth 2.0 app access token obtained from the Forge
 	 * platform (`@forge/api` or the equivalent Forge Remote auth flow).
 	 */
-	private buildAuthorizationHeader(
-		_method: Method,
-		_url: URL,
-		_cloudId: string,
-	) {
-		// TODO (Phase 5): obtain a Forge app access token for `cloudId` and
-		// return `Bearer ${token}`. See MIGRATION_PLAN.md.
+	private buildAuthorizationHeader() {
+		// TODO (Phase 5): obtain a Forge app access token for the request's
+		// cloudId and return `Bearer ${token}`. See MIGRATION_PLAN.md.
 		return 'Bearer FORGE_APP_TOKEN_PLACEHOLDER';
 	}
 }

@@ -11,7 +11,7 @@ import type {
 } from '../../../../domain/entities';
 import { FigmaTeamAuthStatus } from '../../../../domain/entities';
 import {
-	generateConnectInstallationCreateParams,
+	generateCloudId,
 	generateFigmaOAuth2UserCredentialCreateParams,
 	generateFigmaTeamCreateParams,
 	generateFigmaTeamSummary,
@@ -22,7 +22,7 @@ import {
 	generateGetTeamProjectsResponse,
 } from '../../../../infrastructure/figma/figma-client/testing';
 import {
-	connectInstallationRepository,
+	cloudIdRepository,
 	figmaOAuth2UserCredentialsRepository,
 	figmaTeamRepository,
 } from '../../../../infrastructure/repositories';
@@ -45,16 +45,16 @@ describe('/admin/teams', () => {
 		let figmaOAuth2UserCredentials: FigmaOAuth2UserCredentials;
 
 		beforeEach(async () => {
-			targetConnectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
+			targetConnectInstallation = await cloudIdRepository.upsert(
+				generateCloudId(),
 			);
-			otherConnectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
+			otherConnectInstallation = await cloudIdRepository.upsert(
+				generateCloudId(),
 			);
 			figmaOAuth2UserCredentials =
 				await figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
-						connectInstallationId: targetConnectInstallation.id,
+						cloudId: targetConnectInstallation.id,
 					}),
 				);
 		});
@@ -63,23 +63,23 @@ describe('/admin/teams', () => {
 			const [team1, team2] = await Promise.all([
 				figmaTeamRepository.upsert(
 					generateFigmaTeamCreateParams({
-						connectInstallationId: targetConnectInstallation.id,
+						cloudId: targetConnectInstallation.id,
 					}),
 				),
 				figmaTeamRepository.upsert(
 					generateFigmaTeamCreateParams({
-						connectInstallationId: targetConnectInstallation.id,
+						cloudId: targetConnectInstallation.id,
 					}),
 				),
 				figmaTeamRepository.upsert(
 					generateFigmaTeamCreateParams({
-						connectInstallationId: otherConnectInstallation.id,
+						cloudId: otherConnectInstallation.id,
 					}),
 				),
 			]);
 			const jwt = generateJiraContextSymmetricJwtToken({
 				atlassianUserId: figmaOAuth2UserCredentials.atlassianUserId,
-				connectInstallation: targetConnectInstallation,
+				cloudId: targetConnectInstallation,
 			});
 
 			mockJiraCheckPermissionsEndpoint({
@@ -110,18 +110,18 @@ describe('/admin/teams', () => {
 		it('should return an empty list if there are no teams connected for the given connect installation', async () => {
 			const jwt = generateJiraContextSymmetricJwtToken({
 				atlassianUserId: figmaOAuth2UserCredentials.atlassianUserId,
-				connectInstallation: targetConnectInstallation,
+				cloudId: targetConnectInstallation,
 			});
 
 			await Promise.all([
 				figmaTeamRepository.upsert(
 					generateFigmaTeamCreateParams({
-						connectInstallationId: otherConnectInstallation.id,
+						cloudId: otherConnectInstallation.id,
 					}),
 				),
 				figmaTeamRepository.upsert(
 					generateFigmaTeamCreateParams({
-						connectInstallationId: otherConnectInstallation.id,
+						cloudId: otherConnectInstallation.id,
 					}),
 				),
 			]);
@@ -148,7 +148,7 @@ describe('/admin/teams', () => {
 		it('should return unauthorized error if a user is not Jira admin', async () => {
 			const jwt = generateJiraContextSymmetricJwtToken({
 				atlassianUserId: figmaOAuth2UserCredentials.atlassianUserId,
-				connectInstallation: targetConnectInstallation,
+				cloudId: targetConnectInstallation,
 			});
 
 			mockJiraCheckPermissionsEndpoint({
@@ -170,17 +170,15 @@ describe('/admin/teams', () => {
 	});
 
 	describe('POST /:teamId/connect', () => {
-		let connectInstallation: ConnectInstallation;
+		let cloudId: ConnectInstallation;
 		let figmaOAuth2UserCredentials: FigmaOAuth2UserCredentials;
 
 		beforeEach(async () => {
-			connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			cloudId = await cloudIdRepository.upsert(generateCloudId());
 			figmaOAuth2UserCredentials =
 				await figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
-						connectInstallationId: connectInstallation.id,
+						cloudId: cloudId,
 					}),
 				);
 		});
@@ -191,11 +189,11 @@ describe('/admin/teams', () => {
 			const webhookId = uuidv4();
 			const jwt = generateJiraContextSymmetricJwtToken({
 				atlassianUserId: figmaOAuth2UserCredentials.atlassianUserId,
-				connectInstallation,
+				cloudId,
 			});
 
 			mockJiraCheckPermissionsEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				request: {
 					accountId: figmaOAuth2UserCredentials.atlassianUserId,
 					globalPermissions: ['ADMINISTER'],
@@ -228,8 +226,8 @@ describe('/admin/teams', () => {
 				}),
 			});
 			mockJiraSetAppPropertyEndpoint({
-				baseUrl: connectInstallation.baseUrl,
-				appKey: connectInstallation.key,
+				baseUrl: issue.self,
+				appKey: cloudId.key,
 				propertyKey: 'is-configured',
 				request: { isConfigured: `CONFIGURED` },
 			});
@@ -253,7 +251,7 @@ describe('/admin/teams', () => {
 				teamName,
 				figmaAdminAtlassianUserId: figmaOAuth2UserCredentials.atlassianUserId,
 				authStatus: FigmaTeamAuthStatus.OK,
-				connectInstallationId: connectInstallation.id,
+				cloudId: cloudId,
 			});
 		});
 
@@ -262,11 +260,11 @@ describe('/admin/teams', () => {
 			const teamName = uuidv4();
 			const jwt = generateJiraContextSymmetricJwtToken({
 				atlassianUserId: figmaOAuth2UserCredentials.atlassianUserId,
-				connectInstallation,
+				cloudId,
 			});
 
 			mockJiraCheckPermissionsEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				request: {
 					accountId: figmaOAuth2UserCredentials.atlassianUserId,
 					globalPermissions: ['ADMINISTER'],
@@ -298,11 +296,11 @@ describe('/admin/teams', () => {
 			const teamName = uuidv4();
 			const jwt = generateJiraContextSymmetricJwtToken({
 				atlassianUserId: figmaOAuth2UserCredentials.atlassianUserId,
-				connectInstallation,
+				cloudId,
 			});
 
 			mockJiraCheckPermissionsEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				request: {
 					accountId: figmaOAuth2UserCredentials.atlassianUserId,
 					globalPermissions: ['ADMINISTER'],
@@ -334,11 +332,11 @@ describe('/admin/teams', () => {
 			const teamId = uuidv4();
 			const jwt = generateJiraContextSymmetricJwtToken({
 				atlassianUserId: figmaOAuth2UserCredentials.atlassianUserId,
-				connectInstallation,
+				cloudId,
 			});
 
 			mockJiraCheckPermissionsEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				request: {
 					accountId: figmaOAuth2UserCredentials.atlassianUserId,
 					globalPermissions: ['ADMINISTER'],
@@ -356,17 +354,15 @@ describe('/admin/teams', () => {
 	});
 
 	describe('DELETE /:teamId/disconnect', () => {
-		let connectInstallation: ConnectInstallation;
+		let cloudId: ConnectInstallation;
 		let figmaOAuth2UserCredentials: FigmaOAuth2UserCredentials;
 
 		beforeEach(async () => {
-			connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			cloudId = await cloudIdRepository.upsert(generateCloudId());
 			figmaOAuth2UserCredentials =
 				await figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
-						connectInstallationId: connectInstallation.id,
+						cloudId: cloudId,
 					}),
 				);
 		});
@@ -376,17 +372,17 @@ describe('/admin/teams', () => {
 			const nonFigmaTeamAdminAtlassianUserId = uuidv4();
 			const figmaTeam = await figmaTeamRepository.upsert(
 				generateFigmaTeamCreateParams({
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 					figmaAdminAtlassianUserId: figmaOAuth2UserCredentials.atlassianUserId,
 				}),
 			);
 			const jwt = generateJiraContextSymmetricJwtToken({
 				atlassianUserId: nonFigmaTeamAdminAtlassianUserId,
-				connectInstallation,
+				cloudId,
 			});
 
 			mockJiraCheckPermissionsEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				request: {
 					accountId: nonFigmaTeamAdminAtlassianUserId,
 					globalPermissions: ['ADMINISTER'],
@@ -402,8 +398,8 @@ describe('/admin/teams', () => {
 				status: HttpStatusCode.Ok,
 			});
 			mockJiraSetAppPropertyEndpoint({
-				baseUrl: connectInstallation.baseUrl,
-				appKey: connectInstallation.key,
+				baseUrl: issue.self,
+				appKey: cloudId.key,
 				propertyKey: 'is-configured',
 				request: { isConfigured: `NOT_CONFIGURED` },
 			});
@@ -428,17 +424,17 @@ describe('/admin/teams', () => {
 			const nonFigmaTeamAdminAtlassianUserId = uuidv4();
 			const figmaTeam = await figmaTeamRepository.upsert(
 				generateFigmaTeamCreateParams({
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 					figmaAdminAtlassianUserId: figmaOAuth2UserCredentials.atlassianUserId,
 				}),
 			);
 			const jwt = generateJiraContextSymmetricJwtToken({
 				atlassianUserId: nonFigmaTeamAdminAtlassianUserId,
-				connectInstallation,
+				cloudId,
 			});
 
 			mockJiraCheckPermissionsEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				request: {
 					accountId: nonFigmaTeamAdminAtlassianUserId,
 					globalPermissions: ['ADMINISTER'],
@@ -454,8 +450,8 @@ describe('/admin/teams', () => {
 				status: HttpStatusCode.NotFound,
 			});
 			mockJiraSetAppPropertyEndpoint({
-				baseUrl: connectInstallation.baseUrl,
-				appKey: connectInstallation.key,
+				baseUrl: issue.self,
+				appKey: cloudId.key,
 				propertyKey: 'is-configured',
 				request: { isConfigured: `NOT_CONFIGURED` },
 			});
@@ -476,17 +472,17 @@ describe('/admin/teams', () => {
 			const nonFigmaTeamAdminAtlassianUserId = uuidv4();
 			const figmaTeam = await figmaTeamRepository.upsert(
 				generateFigmaTeamCreateParams({
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 					figmaAdminAtlassianUserId: figmaOAuth2UserCredentials.atlassianUserId,
 				}),
 			);
 			const jwt = generateJiraContextSymmetricJwtToken({
 				atlassianUserId: nonFigmaTeamAdminAtlassianUserId,
-				connectInstallation,
+				cloudId,
 			});
 
 			mockJiraCheckPermissionsEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				request: {
 					accountId: nonFigmaTeamAdminAtlassianUserId,
 					globalPermissions: ['ADMINISTER'],
@@ -520,11 +516,11 @@ describe('/admin/teams', () => {
 			const figmaTeamId = uuidv4();
 			const jwt = generateJiraContextSymmetricJwtToken({
 				atlassianUserId: atlassianUserId,
-				connectInstallation,
+				cloudId,
 			});
 
 			mockJiraCheckPermissionsEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				request: {
 					accountId: atlassianUserId,
 					globalPermissions: ['ADMINISTER'],

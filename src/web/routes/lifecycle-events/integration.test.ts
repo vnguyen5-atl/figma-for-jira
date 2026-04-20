@@ -11,13 +11,13 @@ import app from '../../../app';
 import { buildAppUrl, getConfig } from '../../../config';
 import {
 	generateAssociatedFigmaDesign,
-	generateConnectInstallationCreateParams,
+	generateCloudId,
 	generateFigmaOAuth2UserCredentialCreateParams,
 	generateFigmaTeam,
 } from '../../../domain/entities/testing';
 import {
 	associatedFigmaDesignRepository,
-	connectInstallationRepository,
+	cloudIdRepository,
 	figmaOAuth2UserCredentialsRepository,
 	figmaTeamRepository,
 } from '../../../infrastructure/repositories';
@@ -42,7 +42,7 @@ describe('/lifecycleEvents', () => {
 					method: 'POST',
 					pathname: '/lifecycleEvents/installed',
 				},
-				connectInstallation: {
+				cloudId: {
 					clientKey,
 				},
 				baseUrl: getConfig().app.baseUrl,
@@ -61,9 +61,7 @@ describe('/lifecycleEvents', () => {
 				.send(installedRequest)
 				.expect(HttpStatusCode.NoContent);
 
-			expect(
-				await connectInstallationRepository.getByClientKey(clientKey),
-			).toEqual({
+			expect(await cloudIdRepository.getByClientKey(clientKey)).toEqual({
 				id: expect.anything(),
 				key: installedRequest.key,
 				clientKey: installedRequest.clientKey,
@@ -81,7 +79,7 @@ describe('/lifecycleEvents', () => {
 					method: 'POST',
 					pathname: '/incorrect-pathname',
 				},
-				connectInstallation: {
+				cloudId: {
 					clientKey: uuidv4(),
 				},
 				baseUrl: getConfig().app.baseUrl,
@@ -113,12 +111,8 @@ describe('/lifecycleEvents', () => {
 		it('should delete Figma webhook and application data', async () => {
 			const [targetConnectInstallation, otherConnectInstallation] =
 				await Promise.all([
-					connectInstallationRepository.upsert(
-						generateConnectInstallationCreateParams(),
-					),
-					connectInstallationRepository.upsert(
-						generateConnectInstallationCreateParams(),
-					),
+					cloudIdRepository.upsert(generateCloudId()),
+					cloudIdRepository.upsert(generateCloudId()),
 				]);
 
 			const [
@@ -128,17 +122,17 @@ describe('/lifecycleEvents', () => {
 			] = await Promise.all([
 				figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
-						connectInstallationId: targetConnectInstallation.id,
+						cloudId: targetConnectInstallation.id,
 					}),
 				),
 				figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
-						connectInstallationId: targetConnectInstallation.id,
+						cloudId: targetConnectInstallation.id,
 					}),
 				),
 				figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
-						connectInstallationId: otherConnectInstallation.id,
+						cloudId: otherConnectInstallation.id,
 					}),
 				),
 			]);
@@ -148,31 +142,31 @@ describe('/lifecycleEvents', () => {
 						generateFigmaTeam({
 							figmaAdminAtlassianUserId:
 								targetFigmaOAuth2UserCredentials1.atlassianUserId,
-							connectInstallationId: targetConnectInstallation.id,
+							cloudId: targetConnectInstallation.id,
 						}),
 					),
 					figmaTeamRepository.upsert(
 						generateFigmaTeam({
 							figmaAdminAtlassianUserId:
 								targetFigmaOAuth2UserCredentials2.atlassianUserId,
-							connectInstallationId: targetConnectInstallation.id,
+							cloudId: targetConnectInstallation.id,
 						}),
 					),
 					figmaTeamRepository.upsert(
 						generateFigmaTeam({
-							connectInstallationId: otherConnectInstallation.id,
+							cloudId: otherConnectInstallation.id,
 						}),
 					),
 				]);
 			const [, otherAssociatedFigmaDesign] = await Promise.all([
 				associatedFigmaDesignRepository.upsert(
 					generateAssociatedFigmaDesign({
-						connectInstallationId: targetConnectInstallation.id,
+						cloudId: targetConnectInstallation.id,
 					}),
 				),
 				associatedFigmaDesignRepository.upsert(
 					generateAssociatedFigmaDesign({
-						connectInstallationId: otherConnectInstallation.id,
+						cloudId: otherConnectInstallation.id,
 					}),
 				),
 			]);
@@ -184,7 +178,7 @@ describe('/lifecycleEvents', () => {
 					method: 'POST',
 					pathname: '/lifecycleEvents/uninstalled',
 				},
-				connectInstallation: {
+				cloudId: {
 					clientKey: targetConnectInstallation.clientKey,
 				},
 				baseUrl: getConfig().app.baseUrl,
@@ -224,7 +218,7 @@ describe('/lifecycleEvents', () => {
 					}),
 				)
 				.expect(HttpStatusCode.NoContent);
-			expect(await connectInstallationRepository.getAll()).toEqual([
+			expect(await cloudIdRepository.getAll()).toEqual([
 				otherConnectInstallation,
 			]);
 			expect(await figmaTeamRepository.getAll()).toEqual([otherFigmaTeam]);
@@ -244,7 +238,7 @@ describe('/lifecycleEvents', () => {
 					method: 'POST',
 					pathname: '/incorrect-pathname',
 				},
-				connectInstallation: {
+				cloudId: {
 					clientKey: uuidv4(),
 				},
 				baseUrl: getConfig().app.baseUrl,

@@ -4,8 +4,7 @@ import {
 } from './jira-app-configuration-service';
 import { jiraClient } from './jira-client';
 
-import type { ConnectInstallation } from '../../domain/entities';
-import { generateConnectInstallation } from '../../domain/entities/testing';
+import { generateCloudId } from '../../domain/entities/testing';
 import {
 	ForbiddenHttpClientError,
 	NotFoundHttpClientError,
@@ -15,39 +14,37 @@ describe('JiraService', () => {
 	describe('setAppConfigurationState', () => {
 		it('should set configuration state in app properties', async () => {
 			const configurationState = ConfigurationState.CONFIGURED;
-			const connectInstallation = generateConnectInstallation();
+			const cloudId = generateCloudId();
 			jest.spyOn(jiraClient, 'setAppProperty').mockResolvedValue(undefined);
 
 			await jiraAppConfigurationService.setAppConfigurationState(
 				configurationState,
-				connectInstallation,
+				cloudId,
 			);
 
 			expect(jiraClient.setAppProperty).toHaveBeenCalledWith(
 				'is-configured',
 				{ isConfigured: configurationState },
-				connectInstallation,
+				cloudId,
 			);
 		});
 	});
 
 	describe('deleteAppConfigurationState', () => {
-		let connectInstallation: ConnectInstallation;
+		let cloudId: string;
 
 		beforeEach(() => {
-			connectInstallation = generateConnectInstallation();
+			cloudId = generateCloudId();
 		});
 
 		it('should delete the configuration state in app properties', async () => {
 			jest.spyOn(jiraClient, 'deleteAppProperty').mockResolvedValue(undefined);
 
-			await jiraAppConfigurationService.deleteAppConfigurationState(
-				connectInstallation,
-			);
+			await jiraAppConfigurationService.deleteAppConfigurationState(cloudId);
 
 			expect(jiraClient.deleteAppProperty).toHaveBeenCalledWith(
 				'is-configured',
-				connectInstallation,
+				cloudId,
 			);
 		});
 
@@ -58,9 +55,7 @@ describe('JiraService', () => {
 				.mockRejectedValue(notFoundError);
 
 			await expect(
-				jiraAppConfigurationService.deleteAppConfigurationState(
-					connectInstallation,
-				),
+				jiraAppConfigurationService.deleteAppConfigurationState(cloudId),
 			).resolves.not.toThrow(notFoundError);
 		});
 
@@ -71,9 +66,7 @@ describe('JiraService', () => {
 				.mockRejectedValue(unexpectedError);
 
 			await expect(
-				jiraAppConfigurationService.deleteAppConfigurationState(
-					connectInstallation,
-				),
+				jiraAppConfigurationService.deleteAppConfigurationState(cloudId),
 			).rejects.toThrow(unexpectedError);
 		});
 	});

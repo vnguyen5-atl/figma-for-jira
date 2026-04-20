@@ -10,7 +10,7 @@ import {
 
 import {
 	generateAtlassianDesign,
-	generateConnectInstallation,
+	generateCloudId,
 } from '../../domain/entities/testing';
 
 describe('JiraDesignService', () => {
@@ -26,7 +26,7 @@ describe('JiraDesignService', () => {
 		});
 
 		it('should submit designs', async () => {
-			const connectInstallation = generateConnectInstallation();
+			const cloudId = generateCloudId();
 			const designs = [generateAtlassianDesign(), generateAtlassianDesign()];
 			const submitDesignsResponse = generateSuccessfulSubmitDesignsResponse(
 				designs.map((design) => design.id),
@@ -35,16 +35,16 @@ describe('JiraDesignService', () => {
 				.spyOn(jiraClient, 'submitDesigns')
 				.mockResolvedValue(submitDesignsResponse);
 
-			await jiraDesignService.submitDesigns(designs, connectInstallation);
+			await jiraDesignService.submitDesigns(designs, cloudId);
 
 			expect(jiraClient.submitDesigns).toHaveBeenCalledWith(
 				{ designs },
-				connectInstallation,
+				cloudId,
 			);
 		});
 
 		it('should throw when design is rejected ', async () => {
-			const connectInstallation = generateConnectInstallation();
+			const cloudId = generateCloudId();
 			const designs = [generateAtlassianDesign(), generateAtlassianDesign()];
 			const submitDesignsResponse = generateFailedSubmitDesignsResponse(
 				designs.map((design) => design.id),
@@ -58,25 +58,25 @@ describe('JiraDesignService', () => {
 				.mockResolvedValue(submitDesignsResponse);
 
 			await expect(() =>
-				jiraDesignService.submitDesigns(designs, connectInstallation),
+				jiraDesignService.submitDesigns(designs, cloudId),
 			).rejects.toStrictEqual(expectedError);
 		});
 	});
 
 	describe('submitDesign', () => {
 		it('should call submitDesigns', async () => {
-			const connectInstallation = generateConnectInstallation();
+			const cloudId = generateCloudId();
 			const design = generateAtlassianDesign();
 
 			jest
 				.spyOn(jiraDesignService, 'submitDesigns')
 				.mockResolvedValue(undefined);
 
-			await jiraDesignService.submitDesign(design, connectInstallation);
+			await jiraDesignService.submitDesign(design, cloudId);
 
 			expect(jiraDesignService.submitDesigns).toHaveBeenCalledWith(
 				[design],
-				connectInstallation,
+				cloudId,
 			);
 		});
 	});

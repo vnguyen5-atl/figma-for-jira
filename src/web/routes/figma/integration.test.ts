@@ -28,8 +28,8 @@ import {
 } from '../../../domain/entities';
 import {
 	generateAssociatedFigmaDesignCreateParams,
-	generateConnectInstallation,
-	generateConnectInstallationCreateParams,
+	generateCloudId,
+	generateCloudId,
 	generateFigmaDesignIdentifier,
 	generateFigmaFileKey,
 	generateFigmaFileName,
@@ -60,7 +60,7 @@ import {
 } from '../../../infrastructure/jira/jira-client/testing';
 import {
 	associatedFigmaDesignRepository,
-	connectInstallationRepository,
+	cloudIdRepository,
 	figmaFileWebhookRepository,
 	figmaOAuth2UserCredentialsRepository,
 	figmaTeamRepository,
@@ -104,26 +104,24 @@ describe('/figma', () => {
 	describe('/webhook', () => {
 		describe('FILE_UPDATE event', () => {
 			const currentDate = new Date();
-			let connectInstallation: ConnectInstallation;
+			let cloudId: ConnectInstallation;
 			let figmaTeam: FigmaTeam;
 			let adminFigmaOAuth2UserCredentials: FigmaOAuth2UserCredentials;
 			let fileKey: string;
 			let webhookEventRequestBody: FigmaWebhookEventRequestBody;
 
 			beforeEach(async () => {
-				connectInstallation = await connectInstallationRepository.upsert(
-					generateConnectInstallationCreateParams(),
-				);
+				cloudId = await cloudIdRepository.upsert(generateCloudId());
 				figmaTeam = await figmaTeamRepository.upsert(
 					generateFigmaTeamCreateParams({
-						connectInstallationId: connectInstallation.id,
+						cloudId: cloudId,
 					}),
 				);
 				adminFigmaOAuth2UserCredentials =
 					await figmaOAuth2UserCredentialsRepository.upsert(
 						generateFigmaOAuth2UserCredentialCreateParams({
 							atlassianUserId: figmaTeam.figmaAdminAtlassianUserId,
-							connectInstallationId: connectInstallation.id,
+							cloudId: cloudId,
 						}),
 					);
 
@@ -135,7 +133,7 @@ describe('/figma', () => {
 								fileKey,
 								nodeId: `1:${i}`,
 							}),
-							connectInstallationId: connectInstallation.id,
+							cloudId: cloudId,
 						});
 
 					await associatedFigmaDesignRepository.upsert(
@@ -161,9 +159,9 @@ describe('/figma', () => {
 
 			it('should fetch and submit the associated designs to Jira', async () => {
 				const associatedFigmaDesigns =
-					await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+					await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 						fileKey,
-						connectInstallation.id,
+						cloudId,
 					);
 				const nodeIds = associatedFigmaDesigns
 					.map(({ designId }) => designId.nodeId)
@@ -206,7 +204,7 @@ describe('/figma', () => {
 					response: fileMetaResponse,
 				});
 				mockJiraSubmitDesignsEndpoint({
-					baseUrl: connectInstallation.baseUrl,
+					baseUrl: issue.self,
 					request: generateSubmitDesignsRequest(associatedAtlassianDesigns),
 					response: generateSuccessfulSubmitDesignsResponse(
 						associatedAtlassianDesigns.map(
@@ -251,9 +249,9 @@ describe('/figma', () => {
 
 			it('should ignore if Figma file is not found', async () => {
 				const associatedFigmaDesigns =
-					await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+					await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 						fileKey,
-						connectInstallation.id,
+						cloudId,
 					);
 				const nodeIds = associatedFigmaDesigns
 					.map(({ designId }) => designId.nodeId)
@@ -294,9 +292,9 @@ describe('/figma', () => {
 
 			it('should ingest designs for available Figma nodes and ignore deleted nodes', async () => {
 				const associatedFigmaDesigns =
-					await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+					await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 						fileKey,
-						connectInstallation.id,
+						cloudId,
 					);
 				const nodeIds = associatedFigmaDesigns
 					.map(({ designId }) => designId.nodeId)
@@ -343,7 +341,7 @@ describe('/figma', () => {
 					response: fileMetaResponse,
 				});
 				mockJiraSubmitDesignsEndpoint({
-					baseUrl: connectInstallation.baseUrl,
+					baseUrl: issue.self,
 					request: generateSubmitDesignsRequest(associatedAtlassianDesigns),
 					response: generateSuccessfulSubmitDesignsResponse(
 						associatedAtlassianDesigns.map(
@@ -362,9 +360,9 @@ describe('/figma', () => {
 
 			it('should return a 200 if fetching Figma team name fails with non-auth error', async () => {
 				const associatedFigmaDesigns =
-					await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+					await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 						fileKey,
-						connectInstallation.id,
+						cloudId,
 					);
 				const nodeIds = associatedFigmaDesigns
 					.map(({ designId }) => designId.nodeId!)
@@ -404,7 +402,7 @@ describe('/figma', () => {
 					response: fileMetaResponse,
 				});
 				mockJiraSubmitDesignsEndpoint({
-					baseUrl: connectInstallation.baseUrl,
+					baseUrl: issue.self,
 					request: generateSubmitDesignsRequest(associatedAtlassianDesigns),
 					response: generateSuccessfulSubmitDesignsResponse(
 						associatedAtlassianDesigns.map(
@@ -423,9 +421,9 @@ describe('/figma', () => {
 
 			it('should send an error event if fetching Figma designs fails with unexpected error', async () => {
 				const associatedFigmaDesigns =
-					await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+					await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 						fileKey,
-						connectInstallation.id,
+						cloudId,
 					);
 				const nodeIds = associatedFigmaDesigns
 					.map(({ designId }) => designId.nodeId!)
@@ -488,9 +486,9 @@ describe('/figma', () => {
 
 			it("should set the FigmaTeam status to 'ERROR' and return a 200 if fetching Figma designs fails with auth error", async () => {
 				const associatedFigmaDesigns =
-					await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+					await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 						fileKey,
-						connectInstallation.id,
+						cloudId,
 					);
 				const nodeIds = associatedFigmaDesigns
 					.map(({ designId }) => designId.nodeId!)
@@ -554,12 +552,10 @@ describe('/figma', () => {
 
 		describe('PING event', () => {
 			it('should return a 200 when valid webhook', async () => {
-				const connectInstallation = await connectInstallationRepository.upsert(
-					generateConnectInstallationCreateParams(),
-				);
+				const cloudId = await cloudIdRepository.upsert(generateCloudId());
 				const figmaTeam = await figmaTeamRepository.upsert(
 					generateFigmaTeamCreateParams({
-						connectInstallationId: connectInstallation.id,
+						cloudId: cloudId,
 					}),
 				);
 				const webhookEventRequestBody = generatePingWebhookEventRequestBody({
@@ -574,12 +570,10 @@ describe('/figma', () => {
 			});
 
 			it('should return a 400 if the passcode is invalid', async () => {
-				const connectInstallation = await connectInstallationRepository.upsert(
-					generateConnectInstallationCreateParams(),
-				);
+				const cloudId = await cloudIdRepository.upsert(generateCloudId());
 				const figmaTeam = await figmaTeamRepository.upsert(
 					generateFigmaTeamCreateParams({
-						connectInstallationId: connectInstallation.id,
+						cloudId: cloudId,
 					}),
 				);
 				const webhookEventRequestBody = generatePingWebhookEventRequestBody({
@@ -610,21 +604,19 @@ describe('/figma', () => {
 
 		describe('FILE_UPDATE event', () => {
 			const currentDate = new Date();
-			let connectInstallation: ConnectInstallation;
+			let cloudId: ConnectInstallation;
 			let figmaFileWebhook: FigmaFileWebhook;
 			let adminFigmaOAuth2UserCredentials: FigmaOAuth2UserCredentials;
 			let fileKey: string;
 			let webhookEventRequestBody: FigmaWebhookEventRequestBody;
 
 			beforeEach(async () => {
-				connectInstallation = await connectInstallationRepository.upsert(
-					generateConnectInstallationCreateParams(),
-				);
+				cloudId = await cloudIdRepository.upsert(generateCloudId());
 				figmaFileWebhook = await figmaFileWebhookRepository.upsert(
 					generateFigmaFileWebhook({
 						eventType: FigmaFileWebhookEventType.FILE_UPDATE,
 						createdBy: {
-							connectInstallationId: connectInstallation.id,
+							cloudId: cloudId,
 							atlassianUserId: uuidv4(),
 						},
 					}),
@@ -633,7 +625,7 @@ describe('/figma', () => {
 					await figmaOAuth2UserCredentialsRepository.upsert(
 						generateFigmaOAuth2UserCredentialCreateParams({
 							atlassianUserId: figmaFileWebhook.createdBy.atlassianUserId,
-							connectInstallationId: connectInstallation.id,
+							cloudId: cloudId,
 						}),
 					);
 
@@ -645,7 +637,7 @@ describe('/figma', () => {
 								fileKey,
 								nodeId: `1:${i}`,
 							}),
-							connectInstallationId: connectInstallation.id,
+							cloudId: cloudId,
 						});
 
 					await associatedFigmaDesignRepository.upsert(
@@ -671,9 +663,9 @@ describe('/figma', () => {
 
 			it('should fetch and submit the associated designs to Jira', async () => {
 				const associatedFigmaDesigns =
-					await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+					await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 						fileKey,
-						connectInstallation.id,
+						cloudId,
 					);
 				const nodeIds = associatedFigmaDesigns
 					.map(({ designId }) => designId.nodeId)
@@ -709,7 +701,7 @@ describe('/figma', () => {
 					response: fileMetaResponse,
 				});
 				mockJiraSubmitDesignsEndpoint({
-					baseUrl: connectInstallation.baseUrl,
+					baseUrl: issue.self,
 					request: generateSubmitDesignsRequest(associatedAtlassianDesigns),
 					response: generateSuccessfulSubmitDesignsResponse(
 						associatedAtlassianDesigns.map(
@@ -746,9 +738,9 @@ describe('/figma', () => {
 
 			it('should ignore if Figma file is not found', async () => {
 				const associatedFigmaDesigns =
-					await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+					await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 						fileKey,
-						connectInstallation.id,
+						cloudId,
 					);
 				const nodeIds = associatedFigmaDesigns
 					.map(({ designId }) => designId.nodeId)
@@ -782,9 +774,9 @@ describe('/figma', () => {
 
 			it('should ingest designs for available Figma nodes and ignore deleted nodes', async () => {
 				const associatedFigmaDesigns =
-					await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+					await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 						fileKey,
-						connectInstallation.id,
+						cloudId,
 					);
 				const nodeIds = associatedFigmaDesigns
 					.map(({ designId }) => designId.nodeId)
@@ -824,7 +816,7 @@ describe('/figma', () => {
 					response: fileMetaResponse,
 				});
 				mockJiraSubmitDesignsEndpoint({
-					baseUrl: connectInstallation.baseUrl,
+					baseUrl: issue.self,
 					request: generateSubmitDesignsRequest(associatedAtlassianDesigns),
 					response: generateSuccessfulSubmitDesignsResponse(
 						associatedAtlassianDesigns.map(
@@ -843,9 +835,9 @@ describe('/figma', () => {
 
 			it('should send an error event if fetching Figma designs fails with unexpected error', async () => {
 				const associatedFigmaDesigns =
-					await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+					await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 						fileKey,
-						connectInstallation.id,
+						cloudId,
 					);
 				const nodeIds = associatedFigmaDesigns
 					.map(({ designId }) => designId.nodeId!)
@@ -895,21 +887,19 @@ describe('/figma', () => {
 
 		describe('DEV_MODE_STATUS_UPDATE event', () => {
 			const currentDate = new Date();
-			let connectInstallation: ConnectInstallation;
+			let cloudId: ConnectInstallation;
 			let figmaFileWebhook: FigmaFileWebhook;
 			let adminFigmaOAuth2UserCredentials: FigmaOAuth2UserCredentials;
 			let fileKey: string;
 			let webhookEventRequestBody: FigmaWebhookEventRequestBody;
 
 			beforeEach(async () => {
-				connectInstallation = await connectInstallationRepository.upsert(
-					generateConnectInstallationCreateParams(),
-				);
+				cloudId = await cloudIdRepository.upsert(generateCloudId());
 				figmaFileWebhook = await figmaFileWebhookRepository.upsert(
 					generateFigmaFileWebhook({
 						eventType: FigmaFileWebhookEventType.DEV_MODE_STATUS_UPDATE,
 						createdBy: {
-							connectInstallationId: connectInstallation.id,
+							cloudId: cloudId,
 							atlassianUserId: uuidv4(),
 						},
 					}),
@@ -918,7 +908,7 @@ describe('/figma', () => {
 					await figmaOAuth2UserCredentialsRepository.upsert(
 						generateFigmaOAuth2UserCredentialCreateParams({
 							atlassianUserId: figmaFileWebhook.createdBy.atlassianUserId,
-							connectInstallationId: connectInstallation.id,
+							cloudId: cloudId,
 						}),
 					);
 
@@ -930,7 +920,7 @@ describe('/figma', () => {
 								fileKey,
 								nodeId: `1:${i}`,
 							}),
-							connectInstallationId: connectInstallation.id,
+							cloudId: cloudId,
 						});
 
 					await associatedFigmaDesignRepository.upsert(
@@ -956,9 +946,9 @@ describe('/figma', () => {
 
 			it('should fetch and submit the associated designs to Jira', async () => {
 				const associatedFigmaDesigns =
-					await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+					await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 						fileKey,
-						connectInstallation.id,
+						cloudId,
 					);
 				const nodeIds = associatedFigmaDesigns
 					.map(({ designId }) => designId.nodeId)
@@ -994,7 +984,7 @@ describe('/figma', () => {
 					response: fileMetaResponse,
 				});
 				mockJiraSubmitDesignsEndpoint({
-					baseUrl: connectInstallation.baseUrl,
+					baseUrl: issue.self,
 					request: generateSubmitDesignsRequest(associatedAtlassianDesigns),
 					response: generateSuccessfulSubmitDesignsResponse(
 						associatedAtlassianDesigns.map(
@@ -1031,9 +1021,9 @@ describe('/figma', () => {
 
 			it('should ignore if Figma file is not found', async () => {
 				const associatedFigmaDesigns =
-					await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+					await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 						fileKey,
-						connectInstallation.id,
+						cloudId,
 					);
 				const nodeIds = associatedFigmaDesigns
 					.map(({ designId }) => designId.nodeId)
@@ -1067,9 +1057,9 @@ describe('/figma', () => {
 
 			it('should ingest designs for available Figma nodes and ignore deleted nodes', async () => {
 				const associatedFigmaDesigns =
-					await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+					await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 						fileKey,
-						connectInstallation.id,
+						cloudId,
 					);
 				const nodeIds = associatedFigmaDesigns
 					.map(({ designId }) => designId.nodeId)
@@ -1109,7 +1099,7 @@ describe('/figma', () => {
 					response: fileMetaResponse,
 				});
 				mockJiraSubmitDesignsEndpoint({
-					baseUrl: connectInstallation.baseUrl,
+					baseUrl: issue.self,
 					request: generateSubmitDesignsRequest(associatedAtlassianDesigns),
 					response: generateSuccessfulSubmitDesignsResponse(
 						associatedAtlassianDesigns.map(
@@ -1128,9 +1118,9 @@ describe('/figma', () => {
 
 			it('should send an error event if fetching Figma designs fails with unexpected error', async () => {
 				const associatedFigmaDesigns =
-					await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+					await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 						fileKey,
-						connectInstallation.id,
+						cloudId,
 					);
 				const nodeIds = associatedFigmaDesigns
 					.map(({ designId }) => designId.nodeId!)
@@ -1180,14 +1170,12 @@ describe('/figma', () => {
 
 		describe('PING event', () => {
 			it('should return a 200 when valid webhook', async () => {
-				const connectInstallation = await connectInstallationRepository.upsert(
-					generateConnectInstallationCreateParams(),
-				);
+				const cloudId = await cloudIdRepository.upsert(generateCloudId());
 				const figmaFileWebhook = await figmaFileWebhookRepository.upsert(
 					generateFigmaFileWebhook({
 						eventType: FigmaFileWebhookEventType.FILE_UPDATE,
 						createdBy: {
-							connectInstallationId: connectInstallation.id,
+							cloudId: cloudId,
 							atlassianUserId: uuidv4(),
 						},
 					}),
@@ -1204,12 +1192,10 @@ describe('/figma', () => {
 			});
 
 			it('should return a 400 if the passcode is invalid', async () => {
-				const connectInstallation = await connectInstallationRepository.upsert(
-					generateConnectInstallationCreateParams(),
-				);
+				const cloudId = await cloudIdRepository.upsert(generateCloudId());
 				const figmaTeam = await figmaTeamRepository.upsert(
 					generateFigmaTeamCreateParams({
-						connectInstallationId: connectInstallation.id,
+						cloudId: cloudId,
 					}),
 				);
 				const webhookEventRequestBody = generatePingWebhookEventRequestBody({
@@ -1243,9 +1229,7 @@ describe('/figma', () => {
 		});
 
 		it('should redirect to success page if auth callback to Figma succeeds', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallation(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 
 			nock(FIGMA_OAUTH_API_BASE_URL.toString())
@@ -1261,7 +1245,7 @@ describe('/figma', () => {
 					state: generateFigmaOAuth2State({
 						atlassianUserId,
 						appBaseUrl: getConfig().app.baseUrl,
-						connectClientKey: connectInstallation.clientKey,
+						connectClientKey: cloudId,
 						secretKey: getConfig().figma.oauth2.stateSecretKey,
 					}),
 					code: getTokenQueryParams.code,
@@ -1277,9 +1261,7 @@ describe('/figma', () => {
 		});
 
 		it('should redirect to failure page if auth callback is invalid', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallation(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 
 			nock(FIGMA_OAUTH_API_BASE_URL.toString())
@@ -1293,7 +1275,7 @@ describe('/figma', () => {
 					state: generateFigmaOAuth2State({
 						atlassianUserId,
 						appBaseUrl: getConfig().app.baseUrl,
-						connectClientKey: connectInstallation.clientKey,
+						connectClientKey: cloudId,
 						secretKey: uuidv4(),
 					}),
 					code: getTokenQueryParams.code,
@@ -1309,9 +1291,7 @@ describe('/figma', () => {
 		});
 
 		it('should redirect to failure page if auth callback to Figma fails', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallation(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 
 			nock(FIGMA_OAUTH_API_BASE_URL.toString())
@@ -1325,7 +1305,7 @@ describe('/figma', () => {
 					state: generateFigmaOAuth2State({
 						atlassianUserId,
 						appBaseUrl: getConfig().app.baseUrl,
-						connectClientKey: connectInstallation.clientKey,
+						connectClientKey: cloudId,
 						secretKey: getConfig().figma.oauth2.stateSecretKey,
 					}),
 					code: getTokenQueryParams.code,

@@ -1,14 +1,12 @@
 import axios, { AxiosHeaders, HttpStatusCode } from 'axios';
 
 import { jiraClient } from './jira-client';
-import { createJwtToken } from './jwt-utils';
 import {
 	generateCheckPermissionsRequest,
 	generateCheckPermissionsResponse,
 	generateGetIssueResponse,
 	generateSubmitDesignsRequest,
 	generateSuccessfulSubmitDesignsResponse,
-	MOCK_JWT_TOKEN,
 } from './testing';
 import type {
 	CheckPermissionsRequest,
@@ -16,21 +14,22 @@ import type {
 } from './types';
 
 import { SchemaValidationError } from '../../../common/schema-validation';
-import type { ConnectInstallation } from '../../../domain/entities';
-import { generateConnectInstallation } from '../../../domain/entities/testing';
-
-jest.mock('./jwt-utils');
+import { generateCloudId } from '../../../domain/entities/testing';
 
 describe('JiraClient', () => {
-	let connectInstallation: ConnectInstallation;
+	let cloudId: string;
+
+	const expectedJiraApiBaseUrl = (cloud: string) =>
+		`https://api.atlassian.com/ex/jira/${cloud}/`;
 
 	const defaultExpectedRequestHeaders = () => ({
-		headers: new AxiosHeaders().setAuthorization(`JWT ${MOCK_JWT_TOKEN}`),
+		headers: new AxiosHeaders().setAuthorization(
+			`Bearer FORGE_APP_TOKEN_PLACEHOLDER`,
+		),
 	});
 
 	beforeEach(() => {
-		jest.mocked(createJwtToken).mockReturnValue(MOCK_JWT_TOKEN);
-		connectInstallation = generateConnectInstallation();
+		cloudId = generateCloudId();
 	});
 
 	describe('submitDesigns', () => {
@@ -41,14 +40,11 @@ describe('JiraClient', () => {
 			]);
 			jest.spyOn(axios, 'post').mockResolvedValue({ data: response });
 
-			const result = await jiraClient.submitDesigns(
-				request,
-				connectInstallation,
-			);
+			const result = await jiraClient.submitDesigns(request, cloudId);
 
 			expect(result).toBe(response);
 			expect(axios.post).toHaveBeenCalledWith(
-				`${connectInstallation.baseUrl}/rest/designs/1.0/bulk`,
+				`${expectedJiraApiBaseUrl(cloudId)}rest/designs/1.0/bulk`,
 				request,
 				defaultExpectedRequestHeaders(),
 			);
@@ -65,7 +61,7 @@ describe('JiraClient', () => {
 			});
 
 			await expect(() =>
-				jiraClient.submitDesigns(request, connectInstallation),
+				jiraClient.submitDesigns(request, cloudId),
 			).rejects.toThrowError(SchemaValidationError);
 		});
 	});
@@ -74,15 +70,13 @@ describe('JiraClient', () => {
 		const issueKey = 'TEST-1';
 		it('should return issue', async () => {
 			const response = generateGetIssueResponse({ key: issueKey });
-			jest.spyOn(axios, 'get').mockResolvedValue({
-				data: response,
-			});
+			jest.spyOn(axios, 'get').mockResolvedValue({ data: response });
 
-			const result = await jiraClient.getIssue(issueKey, connectInstallation);
+			const result = await jiraClient.getIssue(issueKey, cloudId);
 
 			expect(result).toBe(response);
 			expect(axios.get).toHaveBeenCalledWith(
-				`${connectInstallation.baseUrl}/rest/api/3/issue/${issueKey}`,
+				`${expectedJiraApiBaseUrl(cloudId)}rest/api/3/issue/${issueKey}`,
 				defaultExpectedRequestHeaders(),
 			);
 		});
@@ -92,12 +86,10 @@ describe('JiraClient', () => {
 				...generateGetIssueResponse({ key: issueKey }),
 				id: null,
 			};
-			jest.spyOn(axios, 'get').mockResolvedValue({
-				data: unexpectedResponse,
-			});
+			jest.spyOn(axios, 'get').mockResolvedValue({ data: unexpectedResponse });
 
 			await expect(() =>
-				jiraClient.getIssue(issueKey, connectInstallation),
+				jiraClient.getIssue(issueKey, cloudId),
 			).rejects.toThrowError(SchemaValidationError);
 		});
 	});
@@ -105,22 +97,18 @@ describe('JiraClient', () => {
 	describe('setAppProperty', () => {
 		const propertyKey = 'property-key';
 		it('should set app property', async () => {
-			jest.spyOn(axios, 'put').mockResolvedValue({
-				status: HttpStatusCode.Ok,
-			});
+			jest.spyOn(axios, 'put').mockResolvedValue({ status: HttpStatusCode.Ok });
 
-			await jiraClient.setAppProperty(
-				propertyKey,
-				'some value',
-				connectInstallation,
-			);
+			await jiraClient.setAppProperty(propertyKey, 'some value', cloudId);
 
 			const headers = defaultExpectedRequestHeaders()
 				.headers.setAccept('application/json')
 				.setContentType('application/json');
 
 			expect(axios.put).toHaveBeenCalledWith(
-				`${connectInstallation.baseUrl}/rest/atlassian-connect/1/addons/${connectInstallation.key}/properties/${propertyKey}`,
+				`${expectedJiraApiBaseUrl(
+					cloudId,
+				)}rest/forge/1/app/properties/${propertyKey}`,
 				JSON.stringify('some value'),
 				{ headers },
 			);
@@ -130,14 +118,16 @@ describe('JiraClient', () => {
 	describe('deleteAppProperty', () => {
 		const propertyKey = 'property-key';
 		it('should delete app property', async () => {
-			jest.spyOn(axios, 'delete').mockResolvedValue({
-				status: HttpStatusCode.NoContent,
-			});
+			jest
+				.spyOn(axios, 'delete')
+				.mockResolvedValue({ status: HttpStatusCode.NoContent });
 
-			await jiraClient.deleteAppProperty(propertyKey, connectInstallation);
+			await jiraClient.deleteAppProperty(propertyKey, cloudId);
 
 			expect(axios.delete).toHaveBeenCalledWith(
-				`${connectInstallation.baseUrl}/rest/atlassian-connect/1/addons/${connectInstallation.key}/properties/${propertyKey}`,
+				`${expectedJiraApiBaseUrl(
+					cloudId,
+				)}rest/forge/1/app/properties/${propertyKey}`,
 				defaultExpectedRequestHeaders(),
 			);
 		});
@@ -154,14 +144,11 @@ describe('JiraClient', () => {
 				data: response,
 			});
 
-			const result = await jiraClient.checkPermissions(
-				request,
-				connectInstallation,
-			);
+			const result = await jiraClient.checkPermissions(request, cloudId);
 
 			expect(result).toBe(response);
 			expect(axios.post).toHaveBeenCalledWith(
-				`${connectInstallation.baseUrl}/rest/api/3/permissions/check`,
+				`${expectedJiraApiBaseUrl(cloudId)}rest/api/3/permissions/check`,
 				request,
 				defaultExpectedRequestHeaders(),
 			);

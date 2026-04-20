@@ -12,7 +12,7 @@ import {
 	FigmaFileWebhookEventType,
 } from '../domain/entities';
 import {
-	generateConnectInstallation,
+	generateCloudId,
 	generateFigmaDesignIdentifier,
 	generateFigmaFileWebhook,
 	generateJiraIssueAri,
@@ -29,7 +29,7 @@ const generateOnDesignAssociatedWithIssueUseCaseParams = ({
 	designId = generateFigmaDesignIdentifier().toAtlassianDesignId(),
 	issueId = generateJiraIssueId(),
 	atlassianUserId = uuidv4(),
-	connectInstallation = generateConnectInstallation(),
+	cloudId = generateCloudId(),
 } = {}): OnDesignAssociatedWithIssueUseCaseParams => ({
 	design: {
 		ari: 'NOT_USED',
@@ -40,7 +40,7 @@ const generateOnDesignAssociatedWithIssueUseCaseParams = ({
 		id: issueId,
 	},
 	atlassianUserId,
-	connectInstallation,
+	cloudId,
 });
 
 const generateWebhookV2 = (
@@ -81,10 +81,7 @@ describe('onDesignAssociatedWithIssueUseCase', () => {
 			)
 			.mockResolvedValue();
 		jest
-			.spyOn(
-				figmaFileWebhookRepository,
-				'findByFileKeyAndEventTypeAndConnectInstallationId',
-			)
+			.spyOn(figmaFileWebhookRepository, 'findByFileKeyAndEventTypeAndCloudId')
 			.mockResolvedValue(null);
 		const fileWebhook = generateWebhookV2(figmaDesignId.fileKey, 'FILE_UPDATE');
 		const devModeStatusUpdateWebhook = generateWebhookV2(
@@ -104,7 +101,7 @@ describe('onDesignAssociatedWithIssueUseCase', () => {
 		expect(associatedFigmaDesignRepository.upsert).toHaveBeenCalledWith({
 			designId: figmaDesignId,
 			associatedWithAri: params.issue.ari,
-			connectInstallationId: params.connectInstallation.id,
+			cloudId: params.cloudId,
 			inputUrl: undefined,
 		});
 		expect(
@@ -113,28 +110,28 @@ describe('onDesignAssociatedWithIssueUseCase', () => {
 			figmaDesignId,
 			issueId: params.issue.id,
 			atlassianUserId: params.atlassianUserId,
-			connectInstallation: params.connectInstallation,
+			cloudId: params.cloudId,
 		});
 		expect(
-			figmaFileWebhookRepository.findByFileKeyAndEventTypeAndConnectInstallationId,
+			figmaFileWebhookRepository.findByFileKeyAndEventTypeAndCloudId,
 		).toHaveBeenCalledWith(
 			figmaDesignId.fileKey,
 			'FILE_UPDATE',
-			params.connectInstallation.id,
+			params.cloudId,
 		);
 		expect(
-			figmaFileWebhookRepository.findByFileKeyAndEventTypeAndConnectInstallationId,
+			figmaFileWebhookRepository.findByFileKeyAndEventTypeAndCloudId,
 		).toHaveBeenCalledWith(
 			figmaDesignId.fileKey,
 			'DEV_MODE_STATUS_UPDATE',
-			params.connectInstallation.id,
+			params.cloudId,
 		);
 		expect(figmaService.createWebhookForFile).toHaveBeenCalledWith(
 			figmaDesignId.fileKey,
 			'FILE_UPDATE',
 			expect.any(String),
 			{
-				connectInstallationId: params.connectInstallation.id,
+				cloudId: params.cloudId,
 				atlassianUserId: params.atlassianUserId,
 			},
 		);
@@ -143,7 +140,7 @@ describe('onDesignAssociatedWithIssueUseCase', () => {
 			'DEV_MODE_STATUS_UPDATE',
 			expect.any(String),
 			{
-				connectInstallationId: params.connectInstallation.id,
+				cloudId: params.cloudId,
 				atlassianUserId: params.atlassianUserId,
 			},
 		);
@@ -157,7 +154,7 @@ describe('onDesignAssociatedWithIssueUseCase', () => {
 				eventType: 'FILE_UPDATE',
 				webhookPasscode: passcode,
 				createdBy: {
-					connectInstallationId: params.connectInstallation.id,
+					cloudId: params.cloudId,
 					atlassianUserId: params.atlassianUserId,
 				},
 			}),
@@ -171,7 +168,7 @@ describe('onDesignAssociatedWithIssueUseCase', () => {
 				eventType: 'DEV_MODE_STATUS_UPDATE',
 				webhookPasscode: secondPasscode,
 				createdBy: {
-					connectInstallationId: params.connectInstallation.id,
+					cloudId: params.cloudId,
 					atlassianUserId: params.atlassianUserId,
 				},
 			}),
@@ -196,23 +193,20 @@ describe('onDesignAssociatedWithIssueUseCase', () => {
 		const fileWebhook = generateFigmaFileWebhook({
 			fileKey: figmaDesignId.fileKey,
 			createdBy: {
-				connectInstallationId: params.connectInstallation.id,
+				cloudId: params.cloudId,
 				atlassianUserId: params.atlassianUserId || uuidv4(),
 			},
 		});
 		const devModeStatusUpdateWebhook = generateFigmaFileWebhook({
 			fileKey: figmaDesignId.fileKey,
 			createdBy: {
-				connectInstallationId: params.connectInstallation.id,
+				cloudId: params.cloudId,
 				atlassianUserId: params.atlassianUserId || uuidv4(),
 			},
 			eventType: FigmaFileWebhookEventType.DEV_MODE_STATUS_UPDATE,
 		});
 		jest
-			.spyOn(
-				figmaFileWebhookRepository,
-				'findByFileKeyAndEventTypeAndConnectInstallationId',
-			)
+			.spyOn(figmaFileWebhookRepository, 'findByFileKeyAndEventTypeAndCloudId')
 			.mockResolvedValueOnce(fileWebhook)
 			.mockResolvedValueOnce(devModeStatusUpdateWebhook);
 		jest.spyOn(figmaService, 'createWebhookForFile');
@@ -221,18 +215,18 @@ describe('onDesignAssociatedWithIssueUseCase', () => {
 		await onDesignAssociatedWithIssueUseCaseParams.execute(params);
 
 		expect(
-			figmaFileWebhookRepository.findByFileKeyAndEventTypeAndConnectInstallationId,
+			figmaFileWebhookRepository.findByFileKeyAndEventTypeAndCloudId,
 		).toHaveBeenCalledWith(
 			figmaDesignId.fileKey,
 			'FILE_UPDATE',
-			params.connectInstallation.id,
+			params.cloudId,
 		);
 		expect(
-			figmaFileWebhookRepository.findByFileKeyAndEventTypeAndConnectInstallationId,
+			figmaFileWebhookRepository.findByFileKeyAndEventTypeAndCloudId,
 		).toHaveBeenCalledWith(
 			figmaDesignId.fileKey,
 			'DEV_MODE_STATUS_UPDATE',
-			params.connectInstallation.id,
+			params.cloudId,
 		);
 		expect(figmaService.createWebhookForFile).toHaveBeenCalledTimes(0);
 		expect(figmaFileWebhookRepository.upsert).toHaveBeenCalledTimes(0);

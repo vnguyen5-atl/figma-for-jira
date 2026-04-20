@@ -14,7 +14,7 @@ import {
 import { Duration } from '../../common/duration';
 import { getConfig } from '../../config';
 import {
-	generateConnectInstallation,
+	generateCloudId,
 	generateConnectUserInfo,
 	generateFigmaOAuth2UserCredentials,
 } from '../../domain/entities/testing';
@@ -40,7 +40,7 @@ describe('FigmaAuthService', () => {
 			const getOAuth2TokenResponse = generateGetOAuth2TokenResponse();
 			const credentials = generateFigmaOAuth2UserCredentials({
 				atlassianUserId: connectUserInfo.atlassianUserId,
-				connectInstallationId: connectUserInfo.connectInstallationId,
+				cloudId: connectUserInfo.cloudId,
 			});
 			jest
 				.spyOn(figmaClient, 'getOAuth2Token')
@@ -63,7 +63,7 @@ describe('FigmaAuthService', () => {
 					Date.now() + getOAuth2TokenResponse.expires_in * 1000,
 				),
 				atlassianUserId: connectUserInfo.atlassianUserId,
-				connectInstallationId: connectUserInfo.connectInstallationId,
+				cloudId: connectUserInfo.cloudId,
 			});
 		});
 	});
@@ -76,7 +76,7 @@ describe('FigmaAuthService', () => {
 					Date.now() + Duration.ofMinutes(10000).asMilliseconds,
 				),
 				atlassianUserId: connectUserInfo.atlassianUserId,
-				connectInstallationId: connectUserInfo.connectInstallationId,
+				cloudId: connectUserInfo.cloudId,
 			});
 			jest
 				.spyOn(figmaOAuth2UserCredentialsRepository, 'get')
@@ -87,7 +87,7 @@ describe('FigmaAuthService', () => {
 			expect(result).toBe(credentials);
 			expect(figmaOAuth2UserCredentialsRepository.get).toHaveBeenCalledWith(
 				connectUserInfo.atlassianUserId,
-				connectUserInfo.connectInstallationId,
+				connectUserInfo.cloudId,
 			);
 		});
 
@@ -99,7 +99,7 @@ describe('FigmaAuthService', () => {
 			const credentials = generateFigmaOAuth2UserCredentials({
 				expiresAt: new Date(now - Duration.ofMinutes(30).asMilliseconds),
 				atlassianUserId: connectUserInfo.atlassianUserId,
-				connectInstallationId: connectUserInfo.connectInstallationId,
+				cloudId: connectUserInfo.cloudId,
 			});
 			const refreshOAuth2TokenResponse = generateRefreshOAuth2TokenResponse();
 			const refreshedCredentials = generateFigmaOAuth2UserCredentials({
@@ -108,7 +108,7 @@ describe('FigmaAuthService', () => {
 				refreshToken: credentials.refreshToken,
 				expiresAt: new Date(now + refreshOAuth2TokenResponse.expires_in * 1000),
 				atlassianUserId: credentials.atlassianUserId,
-				connectInstallationId: credentials.connectInstallationId,
+				cloudId: credentials.cloudId,
 			});
 
 			jest
@@ -129,7 +129,7 @@ describe('FigmaAuthService', () => {
 				refreshToken: refreshedCredentials.refreshToken,
 				expiresAt: refreshedCredentials.expiresAt,
 				atlassianUserId: refreshedCredentials.atlassianUserId,
-				connectInstallationId: refreshedCredentials.connectInstallationId,
+				cloudId: refreshedCredentials.cloudId,
 			});
 		});
 
@@ -155,7 +155,7 @@ describe('FigmaAuthService', () => {
 			const credentials = generateFigmaOAuth2UserCredentials({
 				expiresAt: new Date(now - Duration.ofMinutes(30).asMilliseconds),
 				atlassianUserId: connectUserInfo.atlassianUserId,
-				connectInstallationId: connectUserInfo.connectInstallationId,
+				cloudId: connectUserInfo.cloudId,
 			});
 			const error = new Error('error');
 
@@ -173,7 +173,7 @@ describe('FigmaAuthService', () => {
 	describe('createOAuth2AuthorizationRequest', () => {
 		it('should return an authorisation request', () => {
 			jest.setSystemTime(NOW);
-			const connectInstallation = generateConnectInstallation();
+			const cloudId = generateCloudId();
 			const atlassianUserId = uuidv4();
 			const redirectUrl = new URL(
 				`figma/oauth2/callback`,
@@ -182,7 +182,7 @@ describe('FigmaAuthService', () => {
 
 			const result = figmaAuthService.createOAuth2AuthorizationRequest({
 				atlassianUserId,
-				connectInstallation,
+				cloudId,
 				redirectUrl: redirectUrl,
 			});
 
@@ -196,7 +196,7 @@ describe('FigmaAuthService', () => {
 				scope: getConfig().figma.oauth2.scope,
 				state: encodeSymmetric(
 					{
-						iss: connectInstallation.clientKey,
+						iss: cloudId,
 						iat: NOW_IN_SECONDS,
 						exp: NOW_IN_SECONDS + Duration.ofMinutes(5).asSeconds,
 						sub: atlassianUserId,
@@ -215,11 +215,11 @@ describe('FigmaAuthService', () => {
 	describe('createOAuth2AuthorizationRequest', () => {
 		it('should return decoded state when state is valid', () => {
 			jest.setSystemTime(NOW);
-			const connectInstallation = generateConnectInstallation();
+			const cloudId = generateCloudId();
 			const atlassianUserId = uuidv4();
 			const state = encodeSymmetric(
 				{
-					iss: connectInstallation.clientKey,
+					iss: cloudId,
 					iat: NOW_IN_SECONDS,
 					exp: NOW_IN_SECONDS + Duration.ofMinutes(5).asSeconds,
 					sub: atlassianUserId,
@@ -234,7 +234,7 @@ describe('FigmaAuthService', () => {
 
 			expect(result).toEqual({
 				atlassianUserId,
-				connectClientKey: connectInstallation.clientKey,
+				cloudId,
 			});
 		});
 
@@ -248,11 +248,11 @@ describe('FigmaAuthService', () => {
 
 		it('should throw when token is signed with unexpected key', () => {
 			jest.setSystemTime(NOW);
-			const connectInstallation = generateConnectInstallation();
+			const cloudId = generateCloudId();
 			const atlassianUserId = uuidv4();
 			const state = encodeSymmetric(
 				{
-					iss: connectInstallation.clientKey,
+					iss: cloudId,
 					iat: NOW_IN_SECONDS,
 					exp: NOW_IN_SECONDS + Duration.ofMinutes(5).asSeconds,
 					sub: atlassianUserId,
@@ -289,10 +289,10 @@ describe('FigmaAuthService', () => {
 
 		it('should throw when `sub` claim is invalid', () => {
 			jest.setSystemTime(NOW);
-			const connectInstallation = generateConnectInstallation();
+			const cloudId = generateCloudId();
 			const state = encodeSymmetric(
 				{
-					iss: connectInstallation.clientKey,
+					iss: cloudId,
 					iat: NOW_IN_SECONDS,
 					exp: NOW_IN_SECONDS + Duration.ofMinutes(5).asSeconds,
 					sub: '',
@@ -309,11 +309,11 @@ describe('FigmaAuthService', () => {
 
 		it('should throw when `aud` claim does not contain app base URL', () => {
 			jest.setSystemTime(NOW);
-			const connectInstallation = generateConnectInstallation();
+			const cloudId = generateCloudId();
 			const atlassianUserId = uuidv4();
 			const state = encodeSymmetric(
 				{
-					iss: connectInstallation.clientKey,
+					iss: cloudId,
 					iat: NOW_IN_SECONDS,
 					exp: NOW_IN_SECONDS + Duration.ofMinutes(5).asSeconds,
 					sub: atlassianUserId,
@@ -330,11 +330,11 @@ describe('FigmaAuthService', () => {
 
 		it('should throw when token is expired', () => {
 			jest.setSystemTime(NOW);
-			const connectInstallation = generateConnectInstallation();
+			const cloudId = generateCloudId();
 			const atlassianUserId = uuidv4();
 			const state = encodeSymmetric(
 				{
-					iss: connectInstallation.clientKey,
+					iss: cloudId,
 					iat: NOW_IN_SECONDS,
 					exp: NOW_IN_SECONDS - Duration.ofMinutes(1).asSeconds,
 					sub: atlassianUserId,

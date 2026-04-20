@@ -3,61 +3,64 @@ import { v4 as uuidv4 } from 'uuid';
 import { uninstalledUseCase } from './uninstalled-use-case';
 
 import {
-	generateConnectInstallation,
+	generateCloudId,
 	generateFigmaFileWebhook,
 	generateFigmaTeam,
 } from '../domain/entities/testing';
 import { figmaService } from '../infrastructure/figma';
 import { jiraService } from '../infrastructure/jira';
 import {
-	connectInstallationRepository,
 	figmaFileWebhookRepository,
 	figmaTeamRepository,
 } from '../infrastructure/repositories';
+import { prismaClient } from '../infrastructure/repositories/prisma-client';
 
 describe('uninstalledUseCase', () => {
 	afterEach(() => {
 		jest.clearAllMocks();
 	});
 
-	it('should delete Figma webhook and app data', async () => {
-		const connectInstallation = generateConnectInstallation();
+	it('should delete Figma webhooks and app data for the given cloudId', async () => {
+		const cloudId = generateCloudId();
 		const [figmaTeam1, figmaTeam2] = [
-			generateFigmaTeam({ connectInstallationId: connectInstallation.id }),
-			generateFigmaTeam({ connectInstallationId: connectInstallation.id }),
+			generateFigmaTeam({ cloudId }),
+			generateFigmaTeam({ cloudId }),
 		];
 		const [figmaFileWebhook1, figmaFileWebhook2] = [
 			generateFigmaFileWebhook({
-				createdBy: {
-					connectInstallationId: connectInstallation.id,
-					atlassianUserId: uuidv4(),
-				},
+				createdBy: { cloudId, atlassianUserId: uuidv4() },
 			}),
 			generateFigmaFileWebhook({
-				createdBy: {
-					connectInstallationId: connectInstallation.id,
-					atlassianUserId: uuidv4(),
-				},
+				createdBy: { cloudId, atlassianUserId: uuidv4() },
 			}),
 		];
 		jest
-			.spyOn(connectInstallationRepository, 'getByClientKey')
-			.mockResolvedValue(connectInstallation);
-		jest
-			.spyOn(figmaTeamRepository, 'findManyByConnectInstallationId')
+			.spyOn(figmaTeamRepository, 'findManyByCloudId')
 			.mockResolvedValue([figmaTeam1, figmaTeam2]);
-		jest.spyOn(figmaService, 'tryDeleteWebhook').mockResolvedValue();
 		jest
-			.spyOn(figmaFileWebhookRepository, 'findManyByConnectInstallationId')
+			.spyOn(figmaFileWebhookRepository, 'findManyByCloudId')
 			.mockResolvedValue([figmaFileWebhook1, figmaFileWebhook2]);
-		jest
-			.spyOn(connectInstallationRepository, 'deleteByClientKey')
-			.mockResolvedValue(connectInstallation);
+		jest.spyOn(figmaService, 'tryDeleteWebhook').mockResolvedValue();
+
+		// Mock the Prisma transaction (the use case calls prismaClient.get().$transaction([...]))
+		const transactionSpy = jest
+			.fn<Promise<unknown[]>, [unknown[]]>()
+			.mockResolvedValue([]);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+		jest.spyOn(prismaClient, 'get').mockReturnValue({
+			$transaction: transactionSpy,
+			associatedFigmaDesign: { deleteMany: jest.fn() },
+			figmaOAuth2UserCredentials: { deleteMany: jest.fn() },
+			figmaTeam: { deleteMany: jest.fn() },
+			figmaFileWebhook: { deleteMany: jest.fn() },
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		} as any);
+
 		jest
 			.spyOn(jiraService, 'deleteAppConfigurationState')
 			.mockResolvedValue(undefined);
 
-		await uninstalledUseCase.execute(connectInstallation.clientKey);
+		await uninstalledUseCase.execute(cloudId);
 
 		expect(figmaService.tryDeleteWebhook).toHaveBeenCalledTimes(4);
 		expect(figmaService.tryDeleteWebhook).toHaveBeenCalledWith(
@@ -76,11 +79,9 @@ describe('uninstalledUseCase', () => {
 			figmaFileWebhook2.webhookId,
 			figmaFileWebhook2.createdBy,
 		);
-		expect(
-			connectInstallationRepository.deleteByClientKey,
-		).toHaveBeenCalledWith(connectInstallation.clientKey);
+		expect(transactionSpy).toHaveBeenCalled();
 		expect(jiraService.deleteAppConfigurationState).toHaveBeenCalledWith(
-			connectInstallation,
+			cloudId,
 		);
 	});
 });

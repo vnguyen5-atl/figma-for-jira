@@ -19,7 +19,7 @@ import {
 	FigmaFileWebhookEventType,
 } from '../../../domain/entities';
 import {
-	generateConnectInstallationCreateParams,
+	generateCloudId,
 	generateFigmaDesignIdentifier,
 	generateFigmaDesignUrl,
 	generateFigmaFileKey,
@@ -45,7 +45,7 @@ import {
 } from '../../../infrastructure/figma/transformers';
 import {
 	associatedFigmaDesignRepository,
-	connectInstallationRepository,
+	cloudIdRepository,
 	figmaFileWebhookRepository,
 	figmaOAuth2UserCredentialsRepository,
 } from '../../../infrastructure/repositories';
@@ -73,15 +73,13 @@ describe('/entities', () => {
 		});
 
 		it('should return design for given Figma File URL', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			const figmaUserCredentials =
 				await figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
 						atlassianUserId,
-						connectInstallationId: connectInstallation.id,
+						cloudId: cloudId,
 					}),
 				);
 			const figmaDesignId = generateFigmaDesignIdentifier({
@@ -115,7 +113,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateGetEntityByUrlAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -124,15 +122,13 @@ describe('/entities', () => {
 		});
 
 		it('should return design for given Figma File Node URL', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			const figmaUserCredentials =
 				await figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
 						atlassianUserId,
-						connectInstallationId: connectInstallation.id,
+						cloudId: cloudId,
 					}),
 				);
 			const figmaDesignId = generateFigmaDesignIdentifier({
@@ -179,7 +175,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateGetEntityByUrlAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -188,15 +184,13 @@ describe('/entities', () => {
 		});
 
 		it('should respond with `HTTP 400` when `user` parameter is not given', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const jwt = generateJiraServerSymmetricJwtToken({
 				request: {
 					method: 'POST',
 					pathname: '/entities/getEntityByUrl',
 				},
-				connectInstallation,
+				cloudId,
 			});
 
 			return request(app)
@@ -212,16 +206,14 @@ describe('/entities', () => {
 		});
 
 		it('should respond with `HTTP 400` when given URL has unexpected format', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			const jwt = generateJiraServerSymmetricJwtToken({
 				request: {
 					method: 'POST',
 					pathname: '/entities/getEntityByUrl',
 				},
-				connectInstallation,
+				cloudId,
 			});
 
 			return request(app)
@@ -249,9 +241,7 @@ describe('/entities', () => {
 		});
 
 		it('should respond with `HTTP 403` when app is authorized to access Figma on behalf of user', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 
 			return request(app)
@@ -260,7 +250,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateGetEntityByUrlAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -268,15 +258,13 @@ describe('/entities', () => {
 		});
 
 		it('should respond with `HTTP 404` when design is not found', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			const figmaUserCredentials =
 				await figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
 						atlassianUserId,
-						connectInstallationId: connectInstallation.id,
+						cloudId: cloudId,
 					}),
 				);
 			const fileKey = generateFigmaFileKey();
@@ -302,7 +290,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateGetEntityByUrlAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -312,15 +300,13 @@ describe('/entities', () => {
 
 	describe('/onEntityAssociated', () => {
 		it('should create Figma Dev Resource and store associated Design data', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			const figmaUserCredentials =
 				await figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
 						atlassianUserId,
-						connectInstallationId: connectInstallation.id,
+						cloudId: cloudId,
 					}),
 				);
 			const issue = generateJiraIssue();
@@ -337,7 +323,7 @@ describe('/entities', () => {
 				response: figmaFileMetaResponse,
 			});
 			mockJiraGetIssueEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				issueId: issue.id,
 				response: issue,
 			});
@@ -345,10 +331,7 @@ describe('/entities', () => {
 				baseUrl: getConfig().figma.apiBaseUrl,
 				request: generateCreateDevResourcesRequest({
 					name: `[${issue.key}] ${issue.fields.summary}`,
-					url: buildJiraIssueUrl(
-						connectInstallation.baseUrl,
-						issue.key,
-					).toString(),
+					url: buildJiraIssueUrl(issue.self, issue.key).toString(),
 					fileKey: figmaDesignId.fileKey,
 					nodeId: '0:0',
 				}),
@@ -367,7 +350,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateOnEntityAssociatedAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -378,15 +361,13 @@ describe('/entities', () => {
 			jest.spyOn(launchDarkly, 'getLDClient').mockResolvedValue(null);
 			jest.spyOn(launchDarkly, 'getFeatureFlag').mockResolvedValue(true);
 
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			const figmaUserCredentials =
 				await figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
 						atlassianUserId,
-						connectInstallationId: connectInstallation.id,
+						cloudId: cloudId,
 					}),
 				);
 			const issue = generateJiraIssue();
@@ -403,7 +384,7 @@ describe('/entities', () => {
 				response: figmaFileMetaResponse,
 			});
 			mockJiraGetIssueEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				issueId: issue.id,
 				response: issue,
 			});
@@ -411,10 +392,7 @@ describe('/entities', () => {
 				baseUrl: getConfig().figma.apiBaseUrl,
 				request: generateCreateDevResourcesRequest({
 					name: `[${issue.key}] ${issue.fields.summary}`,
-					url: buildJiraIssueUrl(
-						connectInstallation.baseUrl,
-						issue.key,
-					).toString(),
+					url: buildJiraIssueUrl(issue.self, issue.key).toString(),
 					fileKey: figmaDesignId.fileKey,
 					nodeId: '0:0',
 				}),
@@ -465,7 +443,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateOnEntityAssociatedAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -477,7 +455,7 @@ describe('/entities', () => {
 				fileKey: figmaDesignId.fileKey,
 				webhookPasscode: expect.any(String),
 				createdBy: {
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 					atlassianUserId,
 				},
 			});
@@ -488,22 +466,20 @@ describe('/entities', () => {
 				fileKey: figmaDesignId.fileKey,
 				webhookPasscode: expect.any(String),
 				createdBy: {
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 					atlassianUserId,
 				},
 			});
 		});
 
 		it('should skip creating Figma Dev Resource when Issue with given ID is not found', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			const figmaUserCredentials =
 				await figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
 						atlassianUserId,
-						connectInstallationId: connectInstallation.id,
+						cloudId: cloudId,
 					}),
 				);
 			const issueId = generateJiraIssueId();
@@ -520,7 +496,7 @@ describe('/entities', () => {
 				response: figmaFileMetaResponse,
 			});
 			mockJiraGetIssueEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				issueId,
 				status: HttpStatusCode.NotFound,
 			});
@@ -538,7 +514,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateOnEntityAssociatedAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -547,15 +523,13 @@ describe('/entities', () => {
 				id: expect.anything(),
 				designId: figmaDesignId,
 				associatedWithAri: issueAri,
-				connectInstallationId: connectInstallation.id,
+				cloudId: cloudId,
 				inputUrl: undefined,
 			});
 		});
 
 		it('should skip creating Figma Dev Resource when user is not given', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const issue = generateJiraIssue();
 			const issueAri = generateJiraIssueAri({ issueId: issue.id });
 			const figmaDesignId = generateFigmaDesignIdentifier({
@@ -563,7 +537,7 @@ describe('/entities', () => {
 			});
 
 			mockJiraGetIssueEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				issueId: issue.id,
 				response: issue,
 			});
@@ -580,7 +554,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateOnEntityAssociatedAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -589,15 +563,13 @@ describe('/entities', () => {
 				id: expect.anything(),
 				designId: figmaDesignId,
 				associatedWithAri: issueAri,
-				connectInstallationId: connectInstallation.id,
+				cloudId: cloudId,
 				inputUrl: undefined,
 			});
 		});
 
 		it('should handle when app is not authorised to view the Issue', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const issue = generateJiraIssue();
 			const issueAri = generateJiraIssueAri({ issueId: issue.id });
 			const figmaDesignId = generateFigmaDesignIdentifier({
@@ -605,7 +577,7 @@ describe('/entities', () => {
 			});
 
 			mockJiraGetIssueEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				issueId: issue.id,
 				status: HttpStatusCode.NotFound,
 			});
@@ -626,7 +598,7 @@ describe('/entities', () => {
 							method: 'PUT',
 							pathname: '/entities/onEntityAssociated',
 						},
-						connectInstallation,
+						cloudId,
 					})}`,
 				)
 				.set('Content-Type', 'application/json')
@@ -635,21 +607,19 @@ describe('/entities', () => {
 				id: expect.anything(),
 				designId: figmaDesignId,
 				associatedWithAri: issueAri,
-				connectInstallationId: connectInstallation.id,
+				cloudId: cloudId,
 				inputUrl: undefined,
 			});
 		});
 
 		it('should handle when app is not authorised to access Figma on behalf of user', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			const figmaUserCredentials =
 				await figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
 						atlassianUserId,
-						connectInstallationId: connectInstallation.id,
+						cloudId: cloudId,
 					}),
 				);
 			const issue = generateJiraIssue();
@@ -665,7 +635,7 @@ describe('/entities', () => {
 				status: HttpStatusCode.Forbidden,
 			});
 			mockJiraGetIssueEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				issueId: issue.id,
 				response: issue,
 			});
@@ -673,10 +643,7 @@ describe('/entities', () => {
 				baseUrl: getConfig().figma.apiBaseUrl,
 				request: generateCreateDevResourcesRequest({
 					name: `[${issue.key}] ${issue.fields.summary}`,
-					url: buildJiraIssueUrl(
-						connectInstallation.baseUrl,
-						issue.key,
-					).toString(),
+					url: buildJiraIssueUrl(issue.self, issue.key).toString(),
 					fileKey: figmaDesignId.fileKey,
 					nodeId: '0:0',
 				}),
@@ -696,7 +663,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateOnEntityAssociatedAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -705,21 +672,19 @@ describe('/entities', () => {
 				id: expect.anything(),
 				designId: figmaDesignId,
 				associatedWithAri: issueAri,
-				connectInstallationId: connectInstallation.id,
+				cloudId: cloudId,
 				inputUrl: undefined,
 			});
 		});
 
 		it('should handle when Figma Dev Resource and associated Design data already exist', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			const figmaUserCredentials =
 				await figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
 						atlassianUserId,
-						connectInstallationId: connectInstallation.id,
+						cloudId: cloudId,
 					}),
 				);
 			const issue = generateJiraIssue();
@@ -731,7 +696,7 @@ describe('/entities', () => {
 				await associatedFigmaDesignRepository.upsert({
 					designId: figmaDesignId,
 					associatedWithAri: issueAri,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				});
 			const figmaFileMetaResponse = generateGetFileMetaResponse();
 
@@ -742,7 +707,7 @@ describe('/entities', () => {
 				response: figmaFileMetaResponse,
 			});
 			mockJiraGetIssueEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				issueId: issue.id,
 				response: issue,
 			});
@@ -750,10 +715,7 @@ describe('/entities', () => {
 				baseUrl: getConfig().figma.apiBaseUrl,
 				request: generateCreateDevResourcesRequest({
 					name: `[${issue.key}] ${issue.fields.summary}`,
-					url: buildJiraIssueUrl(
-						connectInstallation.baseUrl,
-						issue.key,
-					).toString(),
+					url: buildJiraIssueUrl(issue.self, issue.key).toString(),
 					fileKey: figmaDesignId.fileKey,
 					nodeId: '0:0',
 				}),
@@ -772,7 +734,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateOnEntityAssociatedAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -783,9 +745,7 @@ describe('/entities', () => {
 		});
 
 		it('should respond with `HTTP 400` when design ID has unexpected format', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 
 			await request(app)
@@ -799,7 +759,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateOnEntityAssociatedAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -817,14 +777,12 @@ describe('/entities', () => {
 
 	describe('/onEntityDisassociated', () => {
 		it('should delete Figma Dev Resource and associated Design data', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			await figmaOAuth2UserCredentialsRepository.upsert(
 				generateFigmaOAuth2UserCredentialCreateParams({
 					atlassianUserId,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				}),
 			);
 			const issue = generateJiraIssue();
@@ -837,11 +795,11 @@ describe('/entities', () => {
 				await associatedFigmaDesignRepository.upsert({
 					designId: figmaDesignId,
 					associatedWithAri: issueAri,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				});
 
 			mockJiraGetIssueEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				issueId: issue.id,
 				response: issue,
 			});
@@ -852,7 +810,7 @@ describe('/entities', () => {
 				response: generateGetDevResourcesResponse({
 					id: devResourceId,
 					url: generateJiraIssueUrl({
-						baseUrl: connectInstallation.baseUrl,
+						baseUrl: issue.self,
 						key: issue.key,
 					}).toString(),
 				}),
@@ -876,7 +834,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateOnEntityDisassociatedAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -887,14 +845,12 @@ describe('/entities', () => {
 		});
 
 		it('should skip deleting Figma Dev Resource when Issue with given ID is not found', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			await figmaOAuth2UserCredentialsRepository.upsert(
 				generateFigmaOAuth2UserCredentialCreateParams({
 					atlassianUserId,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				}),
 			);
 			const issueId = generateJiraIssueId();
@@ -906,11 +862,11 @@ describe('/entities', () => {
 				await associatedFigmaDesignRepository.upsert({
 					designId: figmaDesignId,
 					associatedWithAri: issueAri,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				});
 
 			mockJiraGetIssueEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				issueId,
 				status: HttpStatusCode.NotFound,
 			});
@@ -928,7 +884,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateOnEntityDisassociatedAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -939,14 +895,12 @@ describe('/entities', () => {
 		});
 
 		it('should skip creating Figma Dev Resource when user is not given', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			await figmaOAuth2UserCredentialsRepository.upsert(
 				generateFigmaOAuth2UserCredentialCreateParams({
 					atlassianUserId,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				}),
 			);
 			const issue = generateJiraIssue();
@@ -958,11 +912,11 @@ describe('/entities', () => {
 				await associatedFigmaDesignRepository.upsert({
 					designId: figmaDesignId,
 					associatedWithAri: issueAri,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				});
 
 			mockJiraGetIssueEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				issueId: issue.id,
 				response: issue,
 			});
@@ -979,7 +933,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateOnEntityDisassociatedAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -990,14 +944,12 @@ describe('/entities', () => {
 		});
 
 		it('should handle when app is not authorised to view the Issue', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			await figmaOAuth2UserCredentialsRepository.upsert(
 				generateFigmaOAuth2UserCredentialCreateParams({
 					atlassianUserId,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				}),
 			);
 			const issue = generateJiraIssue();
@@ -1010,11 +962,11 @@ describe('/entities', () => {
 				await associatedFigmaDesignRepository.upsert({
 					designId: figmaDesignId,
 					associatedWithAri: issueAri,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				});
 
 			mockJiraGetIssueEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				issueId: issue.id,
 				response: issue,
 			});
@@ -1025,7 +977,7 @@ describe('/entities', () => {
 				response: generateGetDevResourcesResponse({
 					id: devResourceId,
 					url: generateJiraIssueUrl({
-						baseUrl: connectInstallation.baseUrl,
+						baseUrl: issue.self,
 						key: issue.key,
 					}).toString(),
 				}),
@@ -1049,7 +1001,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateOnEntityDisassociatedAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -1060,14 +1012,12 @@ describe('/entities', () => {
 		});
 
 		it('should handle when app is not authorised to access Figma on behalf of user', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			await figmaOAuth2UserCredentialsRepository.upsert(
 				generateFigmaOAuth2UserCredentialCreateParams({
 					atlassianUserId,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				}),
 			);
 			const issue = generateJiraIssue();
@@ -1080,11 +1030,11 @@ describe('/entities', () => {
 				await associatedFigmaDesignRepository.upsert({
 					designId: figmaDesignId,
 					associatedWithAri: issueAri,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				});
 
 			mockJiraGetIssueEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				issueId: issue.id,
 				response: issue,
 			});
@@ -1095,7 +1045,7 @@ describe('/entities', () => {
 				response: generateGetDevResourcesResponse({
 					id: devResourceId,
 					url: generateJiraIssueUrl({
-						baseUrl: connectInstallation.baseUrl,
+						baseUrl: issue.self,
 						key: issue.key,
 					}).toString(),
 				}),
@@ -1120,7 +1070,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateOnEntityDisassociatedAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -1131,14 +1081,12 @@ describe('/entities', () => {
 		});
 
 		it('should handle when Figma Dev Resource and associated Design data do not exist', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			await figmaOAuth2UserCredentialsRepository.upsert(
 				generateFigmaOAuth2UserCredentialCreateParams({
 					atlassianUserId,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				}),
 			);
 			const issue = generateJiraIssue();
@@ -1148,7 +1096,7 @@ describe('/entities', () => {
 			});
 
 			mockJiraGetIssueEndpoint({
-				baseUrl: connectInstallation.baseUrl,
+				baseUrl: issue.self,
 				issueId: issue.id,
 				response: issue,
 			});
@@ -1172,7 +1120,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateOnEntityDisassociatedAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')
@@ -1180,9 +1128,7 @@ describe('/entities', () => {
 		});
 
 		it('should respond with `HTTP 400` when design ID has unexpected format', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 
 			await request(app)
@@ -1196,7 +1142,7 @@ describe('/entities', () => {
 				.set(
 					'Authorization',
 					generateOnEntityDisassociatedAuthorisationHeader({
-						connectInstallation,
+						cloudId,
 					}),
 				)
 				.set('Content-Type', 'application/json')

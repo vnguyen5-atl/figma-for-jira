@@ -9,7 +9,7 @@ import { getDesignByUrlUseCase } from './get-design-by-url-use-case';
 
 import {
 	generateAtlassianDesign,
-	generateConnectInstallation,
+	generateCloudId,
 	generateFigmaDesignIdentifier,
 	generateFigmaDesignUrl,
 } from '../domain/entities/testing';
@@ -18,11 +18,11 @@ import { figmaService } from '../infrastructure/figma';
 const generateGetDesignByUrlUseCaseParams = ({
 	designUrl = generateFigmaDesignUrl(),
 	atlassianUserId = uuidv4(),
-	connectInstallation = generateConnectInstallation(),
+	cloudId = generateCloudId(),
 } = {}): GetDesignByUrlUseCaseParams => ({
 	designUrl,
 	atlassianUserId,
-	connectInstallation,
+	cloudId,
 });
 
 describe('getDesignByUrlUseCase', () => {
@@ -41,7 +41,7 @@ describe('getDesignByUrlUseCase', () => {
 		expect(result).toStrictEqual(design);
 		expect(figmaService.getDesignOrParent).toHaveBeenCalledWith(figmaDesignId, {
 			atlassianUserId: params.atlassianUserId,
-			connectInstallationId: params.connectInstallation.id,
+			cloudId: params.cloudId,
 		});
 	});
 

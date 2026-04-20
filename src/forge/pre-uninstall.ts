@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
 /**
  * Forge `preUninstall` lifecycle handler.
@@ -11,13 +11,14 @@
  *
  * The Forge platform allows up to 55 seconds for this handler to complete.
  *
+ * `@forge/api` is provided by the Forge runtime at deploy time. We use a
+ * require-style import to avoid a hard build-time dependency in this
+ * repository (the Express backend doesn't depend on `@forge/api`). The
+ * eslint-disable directive at the top of this file silences the
+ * `no-unsafe-*` rules that would otherwise flag the dynamically loaded API.
+ *
  * @see https://developer.atlassian.com/platform/forge/manifest-reference/modules/pre-uninstall/
  */
-
-// `@forge/api` is provided by the Forge runtime at deploy time. Using a
-// require-style import to avoid a hard build-time dependency in this
-// repository (the Express backend doesn't depend on @forge/api).
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const forgeApi = require('@forge/api');
 
 const REMOTE_URL = process.env.REMOTE_URL;

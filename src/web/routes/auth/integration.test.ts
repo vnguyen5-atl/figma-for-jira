@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import app from '../../../app';
 import { buildAppUrl, getConfig } from '../../../config';
 import {
-	generateConnectInstallationCreateParams,
+	generateCloudId,
 	generateExpiredFigmaOAuth2UserCredentialCreateParams,
 	generateFigmaOAuth2UserCredentialCreateParams,
 } from '../../../domain/entities/testing';
@@ -17,7 +17,7 @@ import {
 	generateRefreshOAuth2TokenResponse,
 } from '../../../infrastructure/figma/figma-client/testing';
 import {
-	connectInstallationRepository,
+	cloudIdRepository,
 	figmaOAuth2UserCredentialsRepository,
 } from '../../../infrastructure/repositories';
 import {
@@ -40,14 +40,12 @@ describe('/auth', () => {
 		});
 
 		it('should return a response indicating that user is authorized if user is authorized', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			await figmaOAuth2UserCredentialsRepository.upsert(
 				generateFigmaOAuth2UserCredentialCreateParams({
 					atlassianUserId,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				}),
 			);
 			const jwt = generateJiraServerSymmetricJwtToken({
@@ -56,7 +54,7 @@ describe('/auth', () => {
 					pathname: buildAppUrl('auth/checkAuth').pathname,
 					query: { userId: atlassianUserId },
 				},
-				connectInstallation,
+				cloudId,
 			});
 
 			mockFigmaMeEndpoint({ baseUrl: getConfig().figma.apiBaseUrl });
@@ -72,15 +70,13 @@ describe('/auth', () => {
 		});
 
 		it('should return a response indicating that user is authorized if credentials were refreshed', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			await figmaOAuth2UserCredentialsRepository.upsert(
 				generateExpiredFigmaOAuth2UserCredentialCreateParams({
 					refreshToken: REFRESH_TOKEN,
 					atlassianUserId,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				}),
 			);
 			const refreshTokenResponse = generateRefreshOAuth2TokenResponse();
@@ -90,7 +86,7 @@ describe('/auth', () => {
 					pathname: buildAppUrl('auth/checkAuth').pathname,
 					query: { userId: atlassianUserId },
 				},
-				connectInstallation,
+				cloudId,
 			});
 
 			nock(FIGMA_OAUTH_API_BASE_URL.toString())
@@ -112,7 +108,7 @@ describe('/auth', () => {
 
 			const credentials = await figmaOAuth2UserCredentialsRepository.get(
 				atlassianUserId,
-				connectInstallation.id,
+				cloudId,
 			);
 			expect(credentials?.accessToken).toEqual(
 				refreshTokenResponse.access_token,
@@ -121,9 +117,7 @@ describe('/auth', () => {
 		});
 
 		it('should return a response indicating that user is not authorized if no credentials stored', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			const jwt = generateJiraServerSymmetricJwtToken({
 				request: {
@@ -131,7 +125,7 @@ describe('/auth', () => {
 					pathname: buildAppUrl('auth/checkAuth').pathname,
 					query: { userId: atlassianUserId },
 				},
-				connectInstallation,
+				cloudId,
 			});
 
 			return request(app)
@@ -153,15 +147,13 @@ describe('/auth', () => {
 		});
 
 		it('should return a response indicating that user is not authorized if credentials could not be refreshed', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			await figmaOAuth2UserCredentialsRepository.upsert(
 				generateExpiredFigmaOAuth2UserCredentialCreateParams({
 					refreshToken: REFRESH_TOKEN,
 					atlassianUserId,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				}),
 			);
 			const jwt = generateJiraServerSymmetricJwtToken({
@@ -170,7 +162,7 @@ describe('/auth', () => {
 					pathname: buildAppUrl('auth/checkAuth').pathname,
 					query: { userId: atlassianUserId },
 				},
-				connectInstallation,
+				cloudId,
 			});
 
 			nock(FIGMA_OAUTH_API_BASE_URL.toString())
@@ -197,14 +189,12 @@ describe('/auth', () => {
 		});
 
 		it('should return a response indicating that user is not authorized if the /me endpoint responds with a 403', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			await figmaOAuth2UserCredentialsRepository.upsert(
 				generateFigmaOAuth2UserCredentialCreateParams({
 					atlassianUserId,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				}),
 			);
 			const jwt = generateJiraServerSymmetricJwtToken({
@@ -213,7 +203,7 @@ describe('/auth', () => {
 					pathname: buildAppUrl('auth/checkAuth').pathname,
 					query: { userId: atlassianUserId },
 				},
-				connectInstallation,
+				cloudId,
 			});
 
 			mockFigmaMeEndpoint({
@@ -240,9 +230,7 @@ describe('/auth', () => {
 		});
 
 		it('should return a response indicating that user is not authorized with correct grant URL', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = await cloudIdRepository.upsert(generateCloudId());
 			const atlassianUserId = uuidv4();
 			const jwt = generateJiraServerSymmetricJwtToken({
 				request: {
@@ -250,7 +238,7 @@ describe('/auth', () => {
 					pathname: buildAppUrl('auth/checkAuth').pathname,
 					query: { userId: atlassianUserId },
 				},
-				connectInstallation,
+				cloudId,
 			});
 
 			return request(app)
@@ -291,7 +279,7 @@ describe('/auth', () => {
 						),
 					).toStrictEqual({
 						atlassianUserId,
-						connectClientKey: connectInstallation.clientKey,
+						connectClientKey: cloudId,
 					});
 				});
 		});

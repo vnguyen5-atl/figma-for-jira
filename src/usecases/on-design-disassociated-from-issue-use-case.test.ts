@@ -11,7 +11,7 @@ import {
 } from '../domain/entities';
 import {
 	generateAssociatedFigmaDesign,
-	generateConnectInstallation,
+	generateCloudId,
 	generateFigmaDesignIdentifier,
 	generateFigmaFileWebhook,
 	generateJiraIssueAri,
@@ -28,7 +28,7 @@ const generateOnDesignDisassociatedWithIssueUseCaseParams = ({
 	designId = generateFigmaDesignIdentifier().toAtlassianDesignId(),
 	issueId = generateJiraIssueId(),
 	atlassianUserId = uuidv4(),
-	connectInstallation = generateConnectInstallation(),
+	cloudId = generateCloudId(),
 } = {}): OnDesignDisassociatedFromIssueUseCaseParams => ({
 	design: {
 		ari: 'NOT_USED',
@@ -39,7 +39,7 @@ const generateOnDesignDisassociatedWithIssueUseCaseParams = ({
 		id: issueId,
 	},
 	atlassianUserId,
-	connectInstallation,
+	cloudId,
 });
 
 describe('onDesignDisassociatedWithIssueUseCase', () => {
@@ -54,7 +54,7 @@ describe('onDesignDisassociatedWithIssueUseCase', () => {
 		jest
 			.spyOn(
 				associatedFigmaDesignRepository,
-				'deleteByDesignIdAndAssociatedWithAriAndConnectInstallationId',
+				'deleteByDesignIdAndAssociatedWithAriAndCloudId',
 			)
 			.mockResolvedValue({} as AssociatedFigmaDesign);
 		jest
@@ -74,16 +74,10 @@ describe('onDesignDisassociatedWithIssueUseCase', () => {
 			}),
 		];
 		jest
-			.spyOn(
-				figmaFileWebhookRepository,
-				'findManyByFileKeyAndConnectInstallationId',
-			)
+			.spyOn(figmaFileWebhookRepository, 'findManyByFileKeyAndCloudId')
 			.mockResolvedValue(webhooks);
 		jest
-			.spyOn(
-				associatedFigmaDesignRepository,
-				'findManyByFileKeyAndConnectInstallationId',
-			)
+			.spyOn(associatedFigmaDesignRepository, 'findManyByFileKeyAndCloudId')
 			.mockResolvedValue([]);
 		jest.spyOn(figmaService, 'tryDeleteWebhook').mockResolvedValue();
 		jest
@@ -94,19 +88,15 @@ describe('onDesignDisassociatedWithIssueUseCase', () => {
 		await onDesignDisassociatedFromIssueUseCase.execute(params);
 
 		expect(
-			associatedFigmaDesignRepository.deleteByDesignIdAndAssociatedWithAriAndConnectInstallationId,
-		).toHaveBeenCalledWith(
-			figmaDesignId,
-			params.issue.ari,
-			params.connectInstallation.id,
-		);
+			associatedFigmaDesignRepository.deleteByDesignIdAndAssociatedWithAriAndCloudId,
+		).toHaveBeenCalledWith(figmaDesignId, params.issue.ari, params.cloudId);
 		expect(
 			figmaBackwardIntegrationServiceV2.tryDeleteDevResourceForJiraIssue,
 		).toHaveBeenCalledWith({
 			figmaDesignId,
 			issueId: params.issue.id,
 			atlassianUserId: params.atlassianUserId,
-			connectInstallation: params.connectInstallation,
+			cloudId: params.cloudId,
 		});
 		expect(figmaService.tryDeleteWebhook).toHaveBeenCalledWith(
 			webhooks[0].webhookId,
@@ -136,7 +126,7 @@ describe('onDesignDisassociatedWithIssueUseCase', () => {
 		jest
 			.spyOn(
 				associatedFigmaDesignRepository,
-				'deleteByDesignIdAndAssociatedWithAriAndConnectInstallationId',
+				'deleteByDesignIdAndAssociatedWithAriAndCloudId',
 			)
 			.mockResolvedValue({} as AssociatedFigmaDesign);
 		jest
@@ -157,16 +147,10 @@ describe('onDesignDisassociatedWithIssueUseCase', () => {
 			}),
 		];
 		jest
-			.spyOn(
-				figmaFileWebhookRepository,
-				'findManyByFileKeyAndConnectInstallationId',
-			)
+			.spyOn(figmaFileWebhookRepository, 'findManyByFileKeyAndCloudId')
 			.mockResolvedValue(webhooks);
 		jest
-			.spyOn(
-				associatedFigmaDesignRepository,
-				'findManyByFileKeyAndConnectInstallationId',
-			)
+			.spyOn(associatedFigmaDesignRepository, 'findManyByFileKeyAndCloudId')
 			.mockResolvedValue([generateAssociatedFigmaDesign()]);
 		jest.spyOn(figmaService, 'tryDeleteWebhook');
 		jest.spyOn(figmaFileWebhookRepository, 'delete');
