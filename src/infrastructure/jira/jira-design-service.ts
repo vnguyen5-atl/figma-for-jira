@@ -2,10 +2,7 @@ import type { SubmitDesignsResponse } from './jira-client';
 import { jiraClient } from './jira-client';
 
 import { CauseAwareError } from '../../common/errors';
-import type {
-	AtlassianDesign,
-	ConnectInstallation,
-} from '../../domain/entities';
+import type { AtlassianDesign } from '../../domain/entities';
 
 export class JiraDesignService {
 	/**
@@ -13,9 +10,9 @@ export class JiraDesignService {
 	 */
 	submitDesign = async (
 		design: AtlassianDesign,
-		connectInstallation: ConnectInstallation,
+		cloudId: string,
 	): Promise<void> => {
-		return this.submitDesigns([design], connectInstallation);
+		return this.submitDesigns([design], cloudId);
 	};
 
 	/**
@@ -23,12 +20,9 @@ export class JiraDesignService {
 	 */
 	submitDesigns = async (
 		designs: AtlassianDesign[],
-		connectInstallation: ConnectInstallation,
+		cloudId: string,
 	): Promise<void> => {
-		const response = await jiraClient.submitDesigns(
-			{ designs },
-			connectInstallation,
-		);
+		const response = await jiraClient.submitDesigns({ designs }, cloudId);
 
 		this.throwIfSubmitDesignResponseHasErrors(response);
 	};

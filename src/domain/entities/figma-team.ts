@@ -14,7 +14,7 @@ export class FigmaTeam {
 	readonly teamName: string;
 	readonly figmaAdminAtlassianUserId: string;
 	readonly authStatus: FigmaTeamAuthStatus;
-	readonly connectInstallationId: string;
+	readonly cloudId: string;
 
 	constructor(params: {
 		id: string;
@@ -24,7 +24,7 @@ export class FigmaTeam {
 		teamName: string;
 		figmaAdminAtlassianUserId: string;
 		authStatus: FigmaTeamAuthStatus;
-		connectInstallationId: string;
+		cloudId: string;
 	}) {
 		this.id = params.id;
 		this.webhookId = params.webhookId;
@@ -33,11 +33,11 @@ export class FigmaTeam {
 		this.teamName = params.teamName;
 		this.figmaAdminAtlassianUserId = params.figmaAdminAtlassianUserId;
 		this.authStatus = params.authStatus;
-		this.connectInstallationId = params.connectInstallationId;
+		this.cloudId = params.cloudId;
 
 		this.#adminInfo = {
 			atlassianUserId: this.figmaAdminAtlassianUserId,
-			connectInstallationId: this.connectInstallationId,
+			cloudId: this.cloudId,
 		};
 	}
 
@@ -61,7 +61,7 @@ export type FigmaTeamCreateParams = {
 	readonly teamName: string;
 	readonly figmaAdminAtlassianUserId: string;
 	readonly authStatus: FigmaTeamAuthStatus;
-	readonly connectInstallationId: string;
+	readonly cloudId: string;
 };
 
 export type FigmaTeamSummary = Pick<

@@ -11,7 +11,7 @@ export type FigmaFileWebhook = {
 	readonly eventType: FigmaFileWebhookEventType;
 	readonly createdBy: {
 		readonly atlassianUserId: string;
-		readonly connectInstallationId: string;
+		readonly cloudId: string;
 	};
 };
 
@@ -22,6 +22,6 @@ export type FigmaFileWebhookCreateParams = {
 	readonly eventType: FigmaFileWebhookEventType;
 	readonly createdBy: {
 		readonly atlassianUserId: string;
-		readonly connectInstallationId: string;
+		readonly cloudId: string;
 	};
 };

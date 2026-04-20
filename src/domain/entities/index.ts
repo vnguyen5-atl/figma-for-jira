@@ -1,6 +1,5 @@
 export * from './associated-figma-design';
 export * from './atlassian-design';
-export * from './connect-installation';
 export * from './connect-user-info';
 export * from './figma-design-identifier';
 export * from './figma-oauth2-user-credentials';

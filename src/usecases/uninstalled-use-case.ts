@@ -1,10 +1,10 @@
 import { figmaService } from '../infrastructure/figma';
 import { jiraService } from '../infrastructure/jira';
 import {
-	connectInstallationRepository,
 	figmaFileWebhookRepository,
 	figmaTeamRepository,
 } from '../infrastructure/repositories';
+import { prismaClient } from '../infrastructure/repositories/prisma-client';
 
 /**
  * @remarks
@@ -15,14 +15,8 @@ import {
  * Consider making the implementation idempotent and retrying its execution in case of a failure (e.g., using a queue).
  */
 export const uninstalledUseCase = {
-	execute: async (clientKey: string) => {
-		const connectInstallation =
-			await connectInstallationRepository.getByClientKey(clientKey);
-
-		const figmaTeams =
-			await figmaTeamRepository.findManyByConnectInstallationId(
-				connectInstallation.id,
-			);
+	execute: async (cloudId: string) => {
+		const figmaTeams = await figmaTeamRepository.findManyByCloudId(cloudId);
 
 		await Promise.allSettled(
 			figmaTeams.map((figmaTeam) =>
@@ -31,9 +25,7 @@ export const uninstalledUseCase = {
 		);
 
 		const figmaFileWebhooks =
-			await figmaFileWebhookRepository.findManyByConnectInstallationId(
-				connectInstallation.id,
-			);
+			await figmaFileWebhookRepository.findManyByCloudId(cloudId);
 
 		await Promise.allSettled(
 			figmaFileWebhooks.map((figmaFileWebhook) =>
@@ -44,9 +36,22 @@ export const uninstalledUseCase = {
 			),
 		);
 
-		// The `ConnectInstallation` deletion causes cascading deletion of all the related records.
-		await connectInstallationRepository.deleteByClientKey(clientKey);
+		// Delete all data scoped to this cloudId. Without ConnectInstallation as a
+		// cascade root, each table is now deleted explicitly.
+		await prismaClient
+			.get()
+			.$transaction([
+				prismaClient
+					.get()
+					.associatedFigmaDesign.deleteMany({ where: { cloudId } }),
+				prismaClient
+					.get()
+					.figmaOAuth2UserCredentials.deleteMany({ where: { cloudId } }),
+				prismaClient.get().figmaTeam.deleteMany({ where: { cloudId } }),
+				prismaClient.get().figmaFileWebhook.deleteMany({ where: { cloudId } }),
+			]);
+
 		// Delete the configuration state of the app since it is being uninstalled
-		await jiraService.deleteAppConfigurationState(connectInstallation);
+		await jiraService.deleteAppConfigurationState(cloudId);
 	},
 };

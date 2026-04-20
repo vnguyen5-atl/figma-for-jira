@@ -1,20 +1,20 @@
 import { jiraClient } from './jira-client';
 
-import type { ConnectInstallation, JiraIssue } from '../../domain/entities';
+import type { JiraIssue } from '../../domain/entities';
 import { NotFoundHttpClientError } from '../http-client-errors';
 
 export class JiraIssueService {
 	/**
 	 * Returns an Issue by the given ID or key.
 	 *
-	 * If the Issue does not exist or the app does not have does not have permission to read it, return `null`.
+	 * If the Issue does not exist or the app does not have permission to read it, return `null`.
 	 */
 	getIssue = async (
 		issueIdOrKey: string,
-		connectInstallation: ConnectInstallation,
+		cloudId: string,
 	): Promise<JiraIssue | null> => {
 		try {
-			return await jiraClient.getIssue(issueIdOrKey, connectInstallation);
+			return await jiraClient.getIssue(issueIdOrKey, cloudId);
 		} catch (error) {
 			if (error instanceof NotFoundHttpClientError) return null;
 

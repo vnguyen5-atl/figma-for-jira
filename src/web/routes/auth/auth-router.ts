@@ -21,11 +21,11 @@ authRouter.get(
 	['/checkAuth'],
 	requestSchemaValidationMiddleware(CHECK_AUTH_REQUEST_SCHEMA),
 	function (req: CheckAuthRequest, res: CheckAuthResponse, next: NextFunction) {
-		const { connectInstallation } = res.locals;
+		const { cloudId } = res.locals;
 		const atlassianUserId = req.query.userId;
 
 		checkUserFigmaAuthUseCase
-			.execute(atlassianUserId, connectInstallation)
+			.execute(atlassianUserId, cloudId)
 			.then((authorized) => {
 				if (authorized) {
 					return res.send({ type: '3LO', authorized });
@@ -34,7 +34,7 @@ authRouter.get(
 				const authorizationEndpoint =
 					figmaAuthService.createOAuth2AuthorizationRequest({
 						atlassianUserId,
-						connectInstallation,
+						cloudId,
 						redirectUrl: buildAppUrl(`figma/oauth/callback`),
 					});
 

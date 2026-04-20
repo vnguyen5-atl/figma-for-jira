@@ -13,7 +13,7 @@ export type AssociatedFigmaDesign = {
 	 * An Atlassian Resource Identifier (ARI) of a target entity.
 	 */
 	readonly associatedWithAri: string;
-	readonly connectInstallationId: string;
+	readonly cloudId: string;
 	/**
 	 * The original design URL provided by a user. While this information is not required
 	 * by the current business logic, it provides more flexibility in handling possible future

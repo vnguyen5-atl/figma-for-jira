@@ -4,8 +4,6 @@ import type {
 	AssociatedFigmaDesign,
 	AssociatedFigmaDesignCreateParams,
 	AtlassianDesign,
-	ConnectInstallation,
-	ConnectInstallationCreateParams,
 	ConnectUserInfo,
 	FigmaFileWebhook,
 	FigmaOAuth2UserCredentialsCreateParams,
@@ -27,6 +25,11 @@ import {
 	generateNumericStringId,
 	getRandomInt,
 } from '../../../common/testing/utils';
+
+/**
+ * Generates a Forge-style cloud ID (a UUID identifying a Jira site).
+ */
+export const generateCloudId = () => uuidv4();
 
 export const generateFigmaFileName = () => uuidv4();
 
@@ -69,26 +72,26 @@ export const generateFigmaOAuth2UserCredentialCreateParams = ({
 	accessToken = uuidv4(),
 	refreshToken = uuidv4(),
 	expiresAt = new Date(Date.now() + Duration.ofMinutes(120).asMilliseconds),
-	connectInstallationId = generateNumericStringId(),
+	cloudId = generateCloudId(),
 } = {}): FigmaOAuth2UserCredentialsCreateParams => ({
 	atlassianUserId,
 	accessToken,
 	refreshToken,
 	expiresAt,
-	connectInstallationId,
+	cloudId,
 });
 
 export const generateExpiredFigmaOAuth2UserCredentialCreateParams = ({
 	atlassianUserId = uuidv4(),
 	accessToken = uuidv4(),
 	refreshToken = uuidv4(),
-	connectInstallationId = generateNumericStringId(),
+	cloudId = generateCloudId(),
 } = {}): FigmaOAuth2UserCredentialsCreateParams => ({
 	atlassianUserId,
 	accessToken,
 	refreshToken,
 	expiresAt: new Date(Date.now() - Duration.ofMinutes(120).asMilliseconds),
-	connectInstallationId,
+	cloudId,
 });
 
 export const generateFigmaOAuth2UserCredentials = ({
@@ -97,7 +100,7 @@ export const generateFigmaOAuth2UserCredentials = ({
 	accessToken = uuidv4(),
 	refreshToken = uuidv4(),
 	expiresAt = new Date(),
-	connectInstallationId = generateNumericStringId(),
+	cloudId = generateCloudId(),
 } = {}): FigmaOAuth2UserCredentials =>
 	new FigmaOAuth2UserCredentials(
 		id,
@@ -105,45 +108,15 @@ export const generateFigmaOAuth2UserCredentials = ({
 		accessToken,
 		refreshToken,
 		expiresAt,
-		connectInstallationId,
+		cloudId,
 	);
 
 export const generateConnectUserInfo = ({
 	atlassianUserId = uuidv4(),
-	connectInstallationId = generateNumericStringId(),
+	cloudId = generateCloudId(),
 } = {}): ConnectUserInfo => ({
 	atlassianUserId,
-	connectInstallationId,
-});
-
-export const generateConnectInstallationCreateParams = ({
-	key = uuidv4(),
-	clientKey = uuidv4(),
-	sharedSecret = uuidv4(),
-	baseUrl = `https://${uuidv4()}.atlassian.com`,
-	displayUrl = `https://${uuidv4()}.atlassian.com`,
-} = {}): ConnectInstallationCreateParams => ({
-	key,
-	clientKey,
-	sharedSecret,
-	baseUrl,
-	displayUrl,
-});
-
-export const generateConnectInstallation = ({
-	id = generateNumericStringId(),
-	key = uuidv4(),
-	clientKey = uuidv4(),
-	sharedSecret = uuidv4(),
-	baseUrl = `https://${uuidv4()}.atlassian.com`,
-	displayUrl = `https://${uuidv4()}.atlassian.com`,
-} = {}): ConnectInstallation => ({
-	id,
-	key,
-	clientKey,
-	sharedSecret,
-	baseUrl,
-	displayUrl,
+	cloudId,
 });
 
 export const generateAtlassianDesign = ({
@@ -204,11 +177,11 @@ export const generateJiraIssue = ({
 export const generateAssociatedFigmaDesignCreateParams = ({
 	designId = generateFigmaDesignIdentifier(),
 	associatedWithAri = generateJiraIssueAri(),
-	connectInstallationId = generateNumericStringId(),
+	cloudId = generateCloudId(),
 }: Partial<AssociatedFigmaDesignCreateParams> = {}): AssociatedFigmaDesignCreateParams => ({
 	designId,
 	associatedWithAri,
-	connectInstallationId,
+	cloudId,
 });
 
 export const generateAssociatedFigmaDesign = ({
@@ -216,12 +189,12 @@ export const generateAssociatedFigmaDesign = ({
 	designId = generateFigmaDesignIdentifier(),
 	associatedWithAri = generateJiraIssueAri(),
 	inputUrl = generateFigmaDesignUrl(designId).toString(),
-	connectInstallationId = generateNumericStringId(),
+	cloudId = generateCloudId(),
 }: Partial<AssociatedFigmaDesign> = {}): AssociatedFigmaDesign => ({
 	id,
 	designId,
 	associatedWithAri,
-	connectInstallationId,
+	cloudId,
 	inputUrl,
 });
 
@@ -232,7 +205,7 @@ export const generateFigmaTeamCreateParams = ({
 	teamName = uuidv4(),
 	figmaAdminAtlassianUserId = uuidv4(),
 	authStatus: status = FigmaTeamAuthStatus.OK,
-	connectInstallationId = generateNumericStringId(),
+	cloudId = generateCloudId(),
 }: Partial<FigmaTeamCreateParams> = {}): FigmaTeamCreateParams => ({
 	webhookId,
 	webhookPasscode,
@@ -240,7 +213,7 @@ export const generateFigmaTeamCreateParams = ({
 	teamName,
 	figmaAdminAtlassianUserId,
 	authStatus: status,
-	connectInstallationId,
+	cloudId,
 });
 
 export const generateFigmaTeam = ({
@@ -251,7 +224,7 @@ export const generateFigmaTeam = ({
 	teamName = uuidv4(),
 	figmaAdminAtlassianUserId = uuidv4(),
 	authStatus = FigmaTeamAuthStatus.OK,
-	connectInstallationId = generateNumericStringId(),
+	cloudId = generateCloudId(),
 }: Partial<FigmaTeam> = {}): FigmaTeam =>
 	new FigmaTeam({
 		id,
@@ -261,7 +234,7 @@ export const generateFigmaTeam = ({
 		teamName,
 		figmaAdminAtlassianUserId,
 		authStatus,
-		connectInstallationId,
+		cloudId,
 	});
 
 export const generateFigmaTeamSummary = ({
@@ -282,7 +255,7 @@ export const generateFigmaFileWebhook = ({
 	eventType = FigmaFileWebhookEventType.FILE_UPDATE,
 	createdBy = {
 		atlassianUserId: uuidv4(),
-		connectInstallationId: generateNumericStringId(),
+		cloudId: generateCloudId(),
 	},
 }: Partial<FigmaFileWebhook> = {}): FigmaFileWebhook => {
 	return {

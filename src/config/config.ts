@@ -30,9 +30,6 @@ export type Config = {
 			readonly stateSecretKey: string;
 		};
 	};
-	readonly jira: {
-		readonly connectKeyServerUrl: URL;
-	};
 };
 
 let config: Config;
@@ -74,11 +71,6 @@ export const getConfig = (): Config => {
 						'file_content:read,file_metadata:read,current_user:read,projects:read,file_dev_resources:read,file_dev_resources:write,webhooks:write',
 					stateSecretKey: readEnvVarString('FIGMA_OAUTH2_STATE_SECRET_KEY'),
 				},
-			},
-			jira: {
-				connectKeyServerUrl: new URL(
-					readEnvVarString('JIRA_CONNECT_KEY_SERVER_URL'),
-				),
 			},
 		};
 	}

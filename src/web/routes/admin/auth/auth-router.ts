@@ -3,27 +3,28 @@ import { Router } from 'express';
 
 import type { MeRequest, MeResponse } from './types';
 
+import { buildAppUrl } from '../../../../config';
 import { figmaAuthService } from '../../../../infrastructure/figma';
 import { getCurrentFigmaUserUseCase } from '../../../../usecases';
-import { buildAppUrl } from '../../../../config';
 
 export const authRouter = Router();
 
 /**
- * Checks whether the given Atlassian admin is authorized to call Figma API.
+ * Returns the current Figma user (if authenticated) and a Figma OAuth 2.0
+ * authorization URL the admin can use to (re-)authenticate.
  */
 authRouter.get(
 	['/me'],
 	function (req: MeRequest, res: MeResponse, next: NextFunction) {
-		const { connectInstallation, atlassianUserId } = res.locals;
+		const { cloudId, accountId } = res.locals;
 
 		getCurrentFigmaUserUseCase
-			.execute(atlassianUserId, connectInstallation)
+			.execute(accountId, cloudId)
 			.then((currentUser) => {
 				const authorizationEndpoint =
 					figmaAuthService.createOAuth2AuthorizationRequest({
-						atlassianUserId,
-						connectInstallation,
+						atlassianUserId: accountId,
+						cloudId,
 						redirectUrl: buildAppUrl('figma/oauth/callback'),
 					});
 

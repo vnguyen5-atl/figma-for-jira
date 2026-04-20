@@ -25,11 +25,11 @@ export class AssociatedFigmaDesignRepository {
 			create: createParamsDbModel,
 			update: createParamsDbModel,
 			where: {
-				fileKey_nodeId_associatedWithAri_connectInstallationId: {
+				fileKey_nodeId_associatedWithAri_cloudId: {
 					fileKey: createParamsDbModel.fileKey,
 					nodeId: createParamsDbModel.nodeId,
 					associatedWithAri: createParamsDbModel.associatedWithAri,
-					connectInstallationId: createParamsDbModel.connectInstallationId,
+					cloudId: createParamsDbModel.cloudId,
 				},
 			},
 		});
@@ -46,30 +46,30 @@ export class AssociatedFigmaDesignRepository {
 		return dbModels.map((dbModel) => this.mapToDomainModel(dbModel));
 	};
 
-	findManyByFileKeyAndConnectInstallationId = async (
+	findManyByFileKeyAndCloudId = async (
 		fileKey: string,
-		connectInstallationId: string,
+		cloudId: string,
 	): Promise<AssociatedFigmaDesign[]> => {
 		const dbModels = await prismaClient.get().associatedFigmaDesign.findMany({
-			where: { fileKey, connectInstallationId: BigInt(connectInstallationId) },
+			where: { fileKey, cloudId },
 		});
 
 		return dbModels.map(this.mapToDomainModel);
 	};
 
-	deleteByDesignIdAndAssociatedWithAriAndConnectInstallationId = async (
+	deleteByDesignIdAndAssociatedWithAriAndCloudId = async (
 		designId: FigmaDesignIdentifier,
 		associatedWithAri: string,
-		connectInstallationId: string,
+		cloudId: string,
 	): Promise<AssociatedFigmaDesign | null> => {
 		try {
 			const record = await prismaClient.get().associatedFigmaDesign.delete({
 				where: {
-					fileKey_nodeId_associatedWithAri_connectInstallationId: {
+					fileKey_nodeId_associatedWithAri_cloudId: {
 						fileKey: designId.fileKey,
 						nodeId: designId.nodeId ?? '',
 						associatedWithAri: associatedWithAri,
-						connectInstallationId: BigInt(connectInstallationId),
+						cloudId,
 					},
 				},
 			});
@@ -91,7 +91,7 @@ export class AssociatedFigmaDesignRepository {
 		fileKey,
 		nodeId,
 		associatedWithAri,
-		connectInstallationId,
+		cloudId,
 		inputUrl,
 	}: PrismaAssociatedFigmaDesign): AssociatedFigmaDesign => ({
 		id: id.toString(),
@@ -100,20 +100,20 @@ export class AssociatedFigmaDesignRepository {
 			nodeId !== '' ? nodeId : undefined,
 		),
 		associatedWithAri,
-		connectInstallationId: connectInstallationId.toString(),
+		cloudId,
 		inputUrl: inputUrl ?? undefined,
 	});
 
 	private mapCreateParamsToDbModel = ({
 		designId,
 		associatedWithAri,
-		connectInstallationId,
+		cloudId,
 		inputUrl,
 	}: AssociatedFigmaDesignCreateParams): PrismaAssociatedFigmaDesignCreateParams => ({
 		fileKey: designId.fileKey,
 		nodeId: designId.nodeId ?? '',
 		associatedWithAri,
-		connectInstallationId: BigInt(connectInstallationId),
+		cloudId,
 		inputUrl: inputUrl ?? null,
 	});
 }

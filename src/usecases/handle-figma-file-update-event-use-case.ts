@@ -10,7 +10,6 @@ import {
 import { jiraService } from '../infrastructure/jira';
 import {
 	associatedFigmaDesignRepository,
-	connectInstallationRepository,
 	figmaTeamRepository,
 } from '../infrastructure/repositories';
 import type { FigmaWebhookInfo } from '../web/routes/figma';
@@ -43,7 +42,7 @@ export const handleFigmaFileUpdateEventUseCase = {
 				try {
 					await syncDesignsToJira(
 						fileKey,
-						figmaTeam.connectInstallationId,
+						figmaTeam.cloudId,
 						figmaTeam.adminInfo,
 					);
 				} catch (e: unknown) {
@@ -73,7 +72,7 @@ export const handleFigmaFileUpdateEventUseCase = {
 				const figmaFileWebhook = webhookInfo.figmaFileWebhook;
 				return await syncDesignsToJira(
 					fileKey,
-					figmaFileWebhook.createdBy.connectInstallationId,
+					figmaFileWebhook.createdBy.cloudId,
 					figmaFileWebhook.createdBy,
 				);
 			}
@@ -83,16 +82,14 @@ export const handleFigmaFileUpdateEventUseCase = {
 
 async function syncDesignsToJira(
 	fileKey: string,
-	connectInstallationId: string,
+	cloudId: string,
 	adminInfo: ConnectUserInfo,
 ): Promise<void> {
-	const [connectInstallation, associatedFigmaDesigns] = await Promise.all([
-		connectInstallationRepository.get(connectInstallationId),
-		associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+	const associatedFigmaDesigns =
+		await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 			fileKey,
-			connectInstallationId,
-		),
-	]);
+			cloudId,
+		);
 
 	if (!associatedFigmaDesigns.length) return;
 
@@ -106,5 +103,5 @@ async function syncDesignsToJira(
 
 	if (!designs.length) return;
 
-	await jiraService.submitDesigns(designs, connectInstallation);
+	await jiraService.submitDesigns(designs, cloudId);
 }

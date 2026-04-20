@@ -4,7 +4,7 @@ import {
 	InvalidInputUseCaseResultError,
 } from './errors';
 
-import type { AtlassianDesign, ConnectInstallation } from '../domain/entities';
+import type { AtlassianDesign } from '../domain/entities';
 import { FigmaDesignIdentifier } from '../domain/entities';
 import {
 	figmaService,
@@ -14,7 +14,7 @@ import {
 export type GetDesignByUrlUseCaseParams = {
 	readonly designUrl: URL;
 	readonly atlassianUserId: string;
-	readonly connectInstallation: ConnectInstallation;
+	readonly cloudId: string;
 };
 
 export const getDesignByUrlUseCase = {
@@ -27,7 +27,7 @@ export const getDesignByUrlUseCase = {
 	execute: async ({
 		designUrl,
 		atlassianUserId,
-		connectInstallation,
+		cloudId,
 	}: GetDesignByUrlUseCaseParams): Promise<AtlassianDesign> => {
 		let figmaDesignId: FigmaDesignIdentifier;
 		try {
@@ -41,7 +41,7 @@ export const getDesignByUrlUseCase = {
 		try {
 			const design = await figmaService.getDesignOrParent(figmaDesignId, {
 				atlassianUserId,
-				connectInstallationId: connectInstallation.id,
+				cloudId,
 			});
 
 			if (!design) throw new FigmaDesignNotFoundUseCaseResultError();

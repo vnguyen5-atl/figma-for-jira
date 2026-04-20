@@ -25,9 +25,9 @@ export class FigmaTeamRepository {
 			create: createParamsDbModel,
 			update: createParamsDbModel,
 			where: {
-				teamId_connectInstallationId: {
+				teamId_cloudId: {
 					teamId: createParamsDbModel.teamId,
-					connectInstallationId: createParamsDbModel.connectInstallationId,
+					cloudId: createParamsDbModel.cloudId,
 				},
 			},
 		});
@@ -47,17 +47,17 @@ export class FigmaTeamRepository {
 	/**
 	 * @throws {NotFoundRepositoryError} An entity is not found.
 	 */
-	getByTeamIdAndConnectInstallationId = async (
+	getByTeamIdAndCloudId = async (
 		teamId: string,
-		connectInstallationId: string,
+		cloudId: string,
 	): Promise<FigmaTeam> => {
 		const dbModel = await prismaClient.get().figmaTeam.findFirst({
-			where: { teamId, connectInstallationId: BigInt(connectInstallationId) },
+			where: { teamId, cloudId },
 		});
 
 		if (dbModel === null) {
 			throw new NotFoundRepositoryError(
-				`Failed to find FigmaTeam for teamId ${teamId} and connectInstallationId ${connectInstallationId}`,
+				`Failed to find FigmaTeam for teamId ${teamId} and cloudId ${cloudId}`,
 			);
 		}
 
@@ -74,21 +74,19 @@ export class FigmaTeamRepository {
 		return this.mapToFigmaTeam(dbModel);
 	};
 
-	findManyByConnectInstallationId = async (
-		connectInstallationId: string,
-	): Promise<FigmaTeam[]> => {
+	findManyByCloudId = async (cloudId: string): Promise<FigmaTeam[]> => {
 		const dbModel = await prismaClient.get().figmaTeam.findMany({
-			where: { connectInstallationId: BigInt(connectInstallationId) },
+			where: { cloudId },
 		});
 
 		return dbModel.map((record) => this.mapToFigmaTeam(record));
 	};
 
-	findManySummaryByConnectInstallationId = async (
-		connectInstallationId: string,
+	findManySummaryByCloudId = async (
+		cloudId: string,
 	): Promise<FigmaTeamSummary[]> => {
 		const dbModel = await prismaClient.get().figmaTeam.findMany({
-			where: { connectInstallationId: BigInt(connectInstallationId) },
+			where: { cloudId },
 			select: { teamId: true, teamName: true, authStatus: true },
 		});
 
@@ -154,7 +152,7 @@ export class FigmaTeamRepository {
 		teamName,
 		figmaAdminAtlassianUserId,
 		authStatus,
-		connectInstallationId,
+		cloudId,
 	}: FigmaTeamCreateParams): PrismaFigmaTeamCreateParams => ({
 		webhookId,
 		webhookPasscode,
@@ -162,7 +160,7 @@ export class FigmaTeamRepository {
 		teamName,
 		figmaAdminAtlassianUserId,
 		authStatus,
-		connectInstallationId: BigInt(connectInstallationId),
+		cloudId,
 	});
 
 	private mapToFigmaTeam = ({
@@ -173,7 +171,7 @@ export class FigmaTeamRepository {
 		teamName,
 		figmaAdminAtlassianUserId,
 		authStatus,
-		connectInstallationId,
+		cloudId,
 	}: PrismaFigmaTeam): FigmaTeam =>
 		new FigmaTeam({
 			id: id.toString(),
@@ -183,7 +181,7 @@ export class FigmaTeamRepository {
 			teamName,
 			figmaAdminAtlassianUserId,
 			authStatus: FigmaTeamAuthStatus[authStatus],
-			connectInstallationId: connectInstallationId.toString(),
+			cloudId,
 		});
 
 	private mapToFigmaTeamSummary = ({

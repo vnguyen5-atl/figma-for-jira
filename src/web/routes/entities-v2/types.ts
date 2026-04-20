@@ -1,12 +1,9 @@
 import type { Request, Response } from 'express';
 
-import type {
-	AtlassianDesign,
-	ConnectInstallation,
-} from '../../../domain/entities';
+import type { AtlassianDesign } from '../../../domain/entities';
 
 export type EntitiesRequestLocals = {
-	readonly connectInstallation: ConnectInstallation;
+	readonly cloudId: string;
 };
 
 /*
@@ -37,10 +34,6 @@ export type GetEntityByUrlResponse = Response<
 	EntitiesRequestLocals
 >;
 
-/*
- * The contract of the `onEntityAssociated` action.
- * See https://developer.atlassian.com/cloud/devops-provider-actions/specification_v2/on-entity-associated/
- */
 export type OnEntityAssociatedRequestBody = {
 	readonly entity: {
 		readonly ari: string;
@@ -67,10 +60,6 @@ export type OnEntityAssociatedRequest = Request<
 
 export type OnEntityAssociatedResponse = Response<void, EntitiesRequestLocals>;
 
-/*
- * The contract of the `onEntityDisassociated` action.
- * See https://developer.atlassian.com/cloud/devops-provider-actions/specification_v2/on-entity-disassociated/
- */
 export type OnEntityDisassociatedRequestBody = {
 	readonly entity: {
 		readonly ari: string;

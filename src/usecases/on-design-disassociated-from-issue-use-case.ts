@@ -1,7 +1,6 @@
 import { InvalidInputUseCaseResultError } from './errors';
 
 import { getFeatureFlag, getLDClient } from '../config/launch_darkly';
-import type { ConnectInstallation } from '../domain/entities';
 import { FigmaDesignIdentifier } from '../domain/entities';
 import { figmaBackwardIntegrationServiceV2 } from '../infrastructure';
 import { figmaService } from '../infrastructure/figma';
@@ -20,7 +19,7 @@ export type OnDesignDisassociatedFromIssueUseCaseParams = {
 		readonly id: string;
 	};
 	readonly atlassianUserId?: string;
-	readonly connectInstallation: ConnectInstallation;
+	readonly cloudId: string;
 };
 
 export const onDesignDisassociatedFromIssueUseCase = {
@@ -41,29 +40,26 @@ export const onDesignDisassociatedFromIssueUseCase = {
 			);
 		}
 
-		await associatedFigmaDesignRepository.deleteByDesignIdAndAssociatedWithAriAndConnectInstallationId(
+		await associatedFigmaDesignRepository.deleteByDesignIdAndAssociatedWithAriAndCloudId(
 			figmaDesignId,
 			params.issue.ari,
-			params.connectInstallation.id,
+			params.cloudId,
 		);
 
 		await figmaBackwardIntegrationServiceV2.tryDeleteDevResourceForJiraIssue({
 			figmaDesignId,
 			issueId: params.issue.id,
 			atlassianUserId: params.atlassianUserId,
-			connectInstallation: params.connectInstallation,
+			cloudId: params.cloudId,
 		});
 
-		await maybeTryDeleteFigmaFileWebhooks(
-			figmaDesignId,
-			params.connectInstallation.id,
-		);
+		await maybeTryDeleteFigmaFileWebhooks(figmaDesignId, params.cloudId);
 	},
 };
 
 async function maybeTryDeleteFigmaFileWebhooks(
 	figmaDesignId: FigmaDesignIdentifier,
-	connectInstallationId: string,
+	cloudId: string,
 ): Promise<void> {
 	const ldClient = await getLDClient();
 	const useFileWebhooks = await getFeatureFlag(
@@ -77,17 +73,17 @@ async function maybeTryDeleteFigmaFileWebhooks(
 	}
 
 	const associatedDesigns =
-		await associatedFigmaDesignRepository.findManyByFileKeyAndConnectInstallationId(
+		await associatedFigmaDesignRepository.findManyByFileKeyAndCloudId(
 			figmaDesignId.fileKey,
-			connectInstallationId,
+			cloudId,
 		);
 
 	// if we no longer have any linked designs that rely on these webhooks, delete them
 	if (associatedDesigns.length === 0) {
 		const fileWebhooks =
-			await figmaFileWebhookRepository.findManyByFileKeyAndConnectInstallationId(
+			await figmaFileWebhookRepository.findManyByFileKeyAndCloudId(
 				figmaDesignId.fileKey,
-				connectInstallationId,
+				cloudId,
 			);
 
 		await Promise.all(

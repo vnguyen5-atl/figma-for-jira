@@ -14,7 +14,6 @@ import { assertSchema } from '../../common/schema-validation';
 import { ensureString } from '../../common/string-utils';
 import { getConfig } from '../../config';
 import type {
-	ConnectInstallation,
 	ConnectUserInfo,
 	FigmaOAuth2UserCredentials,
 } from '../../domain/entities';
@@ -63,14 +62,12 @@ export class FigmaAuthService {
 			accessToken: response.access_token,
 			refreshToken: response.refresh_token,
 			expiresAt: this.createExpiryDate(response.expires_in),
-			connectInstallationId: user.connectInstallationId,
+			cloudId: user.cloudId,
 		});
 	};
 
 	/**
 	 * Returns OAuth 2.0 credentials for the given user if he/she completed OAuth 2.0 flow; otherwise -- `null`.
-	 *
-	 * The method refreshes access token when required, so the caller does not need to handle token expiration.
 	 *
 	 * @throws {MissingOrInvalidCredentialsFigmaAuthServiceError} Credentials are invalid or missing.
 	 */
@@ -82,7 +79,7 @@ export class FigmaAuthService {
 		try {
 			credentials = await figmaOAuth2UserCredentialsRepository.get(
 				user.atlassianUserId,
-				user.connectInstallationId,
+				user.cloudId,
 			);
 		} catch (e: unknown) {
 			if (e instanceof NotFoundRepositoryError) {
@@ -108,15 +105,18 @@ export class FigmaAuthService {
 	 * As a countermeasure against Cross-Site Request Forgery (CSRF) attacks, the URL includes the `state`
 	 * query parameter, which represents a user-bound signed JWT token.
 	 *
+	 * The `state` JWT encodes `cloudId` (in the `iss` claim) and `atlassianUserId` (in the `sub` claim),
+	 * so the OAuth callback can resolve which Forge installation a successful auth belongs to.
+	 *
 	 * @see https://www.figma.com/developers/api#oauth2
 	 */
 	createOAuth2AuthorizationRequest = ({
 		atlassianUserId,
-		connectInstallation,
+		cloudId,
 		redirectUrl,
 	}: {
 		atlassianUserId: string;
-		connectInstallation: ConnectInstallation;
+		cloudId: string;
 		redirectUrl: URL;
 	}): string => {
 		const authorizationEndpoint = new URL(
@@ -128,7 +128,7 @@ export class FigmaAuthService {
 
 		const state = encodeSymmetric(
 			{
-				iss: connectInstallation.clientKey,
+				iss: cloudId,
 				iat: nowInSeconds,
 				exp: nowInSeconds + Duration.ofMinutes(5).asSeconds,
 				sub: atlassianUserId,
@@ -152,15 +152,11 @@ export class FigmaAuthService {
 	/**
 	 * Verifies and returns the OAuth 2.0 authorization response state.
 	 *
-	 * It verifies the state represents an authentic non-expired JWT token.
-	 *
-	 * @see https://www.figma.com/developers/api#oauth2
-	 *
 	 * @throws {Error} Invalid OAuth 2.0 state is given.
 	 */
 	verifyOAuth2AuthorizationResponseState = (
 		state: unknown,
-	): { atlassianUserId: string; connectClientKey: string } => {
+	): { atlassianUserId: string; cloudId: string } => {
 		const encodedState = ensureString(state);
 
 		const claims = decodeSymmetric(
@@ -179,8 +175,6 @@ export class FigmaAuthService {
 
 		if (
 			claims.aud[0] !== getConfig().app.baseUrl.toString() &&
-			// Remove this line as the next step. It is required to avoid disruption
-			// of the OAuth flow started with the previous version of the app.
 			claims.aud[0] !== getConfig().app.baseUrl.origin
 		) {
 			throw new Error('The token contains an invalid `aud` claim.');
@@ -188,7 +182,7 @@ export class FigmaAuthService {
 
 		return {
 			atlassianUserId: claims.sub,
-			connectClientKey: claims.iss,
+			cloudId: claims.iss,
 		};
 	};
 
@@ -214,7 +208,7 @@ export class FigmaAuthService {
 			accessToken: response.access_token,
 			refreshToken: credentials.refreshToken,
 			expiresAt: this.createExpiryDate(response.expires_in),
-			connectInstallationId: credentials.connectInstallationId,
+			cloudId: credentials.cloudId,
 		});
 	};
 

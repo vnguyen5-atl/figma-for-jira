@@ -2,10 +2,7 @@ import { figmaService, UnauthorizedFigmaServiceError } from './figma';
 import { jiraService } from './jira';
 import { getLogger } from './logger';
 
-import type {
-	ConnectInstallation,
-	FigmaDesignIdentifier,
-} from '../domain/entities';
+import type { FigmaDesignIdentifier } from '../domain/entities';
 import { buildJiraIssueUrl } from '../domain/entities';
 
 /**
@@ -23,21 +20,18 @@ export class FigmaBackwardIntegrationServiceV2 {
 		readonly figmaDesignId: FigmaDesignIdentifier;
 		readonly issueId: string;
 		readonly atlassianUserId?: string;
-		readonly connectInstallation: ConnectInstallation;
+		readonly cloudId: string;
 	}): Promise<void> => {
 		// Atlassian User ID should always be provided within the normal business flows.
 		// However, there can be edge cases when the association is removed in from a user-less context on
 		// Atlassian side (e.g., on a system event, data migration, etc.).
 		if (!params.atlassianUserId) {
 			return getLogger().warn(
-				'Skipping deleting a Dev Resource since Atlassian User ID is not given and it is impossible to determine Figma credentials without it.',
+				'Skipping creating a Dev Resource since Atlassian User ID is not given and it is impossible to determine Figma credentials without it.',
 			);
 		}
 
-		const issue = await jiraService.getIssue(
-			params.issueId,
-			params.connectInstallation,
-		);
+		const issue = await jiraService.getIssue(params.issueId, params.cloudId);
 
 		if (!issue) {
 			return getLogger().warn(
@@ -49,13 +43,13 @@ export class FigmaBackwardIntegrationServiceV2 {
 			await figmaService.tryCreateDevResourceForJiraIssue({
 				designId: params.figmaDesignId,
 				issue: {
-					url: buildJiraIssueUrl(params.connectInstallation.baseUrl, issue.key),
+					url: buildJiraIssueUrl(deriveJiraSiteUrl(issue.self), issue.key),
 					key: issue.key,
 					title: issue.fields.summary,
 				},
 				user: {
 					atlassianUserId: params.atlassianUserId,
-					connectInstallationId: params.connectInstallation.id,
+					cloudId: params.cloudId,
 				},
 			});
 		} catch (e) {
@@ -79,21 +73,15 @@ export class FigmaBackwardIntegrationServiceV2 {
 		readonly figmaDesignId: FigmaDesignIdentifier;
 		readonly issueId: string;
 		readonly atlassianUserId?: string;
-		readonly connectInstallation: ConnectInstallation;
+		readonly cloudId: string;
 	}): Promise<void> => {
-		// Atlassian User ID should always be provided within the normal business flows.
-		// However, there can be edge cases when the association is removed in from a user-less context on
-		// Atlassian side (e.g., on a system event, data migration, etc.).
 		if (!params.atlassianUserId) {
 			return getLogger().warn(
 				'Skipping deleting a Dev Resource since Figma credentials cannot be retrieved without an Atlassian User ID.',
 			);
 		}
 
-		const issue = await jiraService.getIssue(
-			params.issueId,
-			params.connectInstallation,
-		);
+		const issue = await jiraService.getIssue(params.issueId, params.cloudId);
 
 		if (!issue) {
 			return getLogger().warn(
@@ -105,12 +93,12 @@ export class FigmaBackwardIntegrationServiceV2 {
 			await figmaService.tryDeleteDevResource({
 				designId: params.figmaDesignId,
 				devResourceUrl: buildJiraIssueUrl(
-					params.connectInstallation.baseUrl,
+					deriveJiraSiteUrl(issue.self),
 					issue.key,
 				),
 				user: {
 					atlassianUserId: params.atlassianUserId,
-					connectInstallationId: params.connectInstallation.id,
+					cloudId: params.cloudId,
 				},
 			});
 		} catch (e) {
@@ -123,6 +111,21 @@ export class FigmaBackwardIntegrationServiceV2 {
 			throw e;
 		}
 	};
+}
+
+/**
+ * Derives the user-facing Jira site URL (e.g., `https://acme.atlassian.net`)
+ * from the `self` URL of a Jira issue (e.g.,
+ * `https://acme.atlassian.net/rest/api/3/issue/12345`).
+ *
+ * @remarks
+ * Previously, the site base URL was stored in `ConnectInstallation.baseUrl`.
+ * In Forge, that information is not directly available, so we derive it from
+ * the issue payload returned by the Jira API.
+ */
+function deriveJiraSiteUrl(issueSelfUrl: string): string {
+	const parsed = new URL(issueSelfUrl);
+	return `${parsed.protocol}//${parsed.host}`;
 }
 
 export const figmaBackwardIntegrationServiceV2 =

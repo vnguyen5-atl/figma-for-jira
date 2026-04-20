@@ -15,19 +15,16 @@ import {
 	disconnectFigmaTeamUseCase,
 	listFigmaTeamsUseCase,
 } from '../../../../usecases';
-import { jiraContextSymmetricJwtAuthenticationMiddleware } from '../../../middleware/jira';
 
 export const teamsRouter = Router();
-
-teamsRouter.use(jiraContextSymmetricJwtAuthenticationMiddleware);
 
 teamsRouter.get(
 	'/',
 	(req: Request, res: ListFigmaTeamsResponse, next: NextFunction) => {
-		const { connectInstallation } = res.locals;
+		const { cloudId } = res.locals;
 
 		listFigmaTeamsUseCase
-			.execute(connectInstallation)
+			.execute(cloudId)
 			.then((teams) => res.status(HttpStatusCode.Ok).send(teams))
 			.catch(next);
 	},
@@ -40,10 +37,10 @@ teamsRouter.post(
 		res: ConnectFigmaTeamResponse,
 		next: NextFunction,
 	) => {
-		const { atlassianUserId, connectInstallation } = res.locals;
+		const { accountId, cloudId } = res.locals;
 
 		connectFigmaTeamUseCase
-			.execute(req.params.teamId, atlassianUserId, connectInstallation)
+			.execute(req.params.teamId, accountId, cloudId)
 			.then((figmaTeamSummary) =>
 				res.status(HttpStatusCode.Ok).send(figmaTeamSummary),
 			)
@@ -58,10 +55,10 @@ teamsRouter.delete(
 		res: DisconnectFigmaTeamResponse,
 		next: NextFunction,
 	) => {
-		const { connectInstallation } = res.locals;
+		const { cloudId } = res.locals;
 
 		disconnectFigmaTeamUseCase
-			.execute(req.params.teamId, connectInstallation)
+			.execute(req.params.teamId, cloudId)
 			.then(() => res.sendStatus(HttpStatusCode.Ok))
 			.catch(next);
 	},
