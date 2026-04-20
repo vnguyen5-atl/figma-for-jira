@@ -1,62 +1,68 @@
 app:
   id: ari:cloud:ecosystem::app/invalid-run-forge-register
-  connect:
-    key: com.figma.jira-add-on
-    remote: connect
-    authentication: jwt
   runtime:
-    name: nodejs20.x
+    name: nodejs22.x
+
 remotes:
   - key: connect
     baseUrl: https://connectie-vnguyen5.public.atlastunnel.com
-connectModules:
-  jira:lifecycle:
-    - key: lifecycle-events
-      installed: /lifecycleEvents/installed
-      uninstalled: /lifecycleEvents/uninstalled
-  jira:configurePage:
-    - key: figma-configure
-      name:
-        value: Configure
-      url: static/admin
-      conditions:
-        - condition: user_is_admin
-  jira:webSections:
-    - key: figma-addon-admin-section
-      name:
-        value: Figma for JIRA Cloud
-      location: admin_plugins_menu
-  jira:adminPages:
-    - key: figma-addon-admin-section-configure
-      name:
-        value: Configure
-      location: admin_plugins_menu/figma-addon-admin-section
-      url: static/admin
-      conditions:
-        - condition: user_is_admin
-  jira:jiraDesignInfoProvider:
-    - homeUrl: https://www.figma.com/
+
+modules:
+  devops:designInfoProvider:
+    - key: figma-design-info-provider
       name:
         value: Figma
-      key: figma-integration
-      handledDomainName: figma.com
+      homeUrl: https://www.figma.com/
       logoUrl: https://connectie-vnguyen5.public.atlastunnel.com/static/figma-logo.svg
       documentationUrl: https://help.figma.com/hc/en-us/articles/360039827834-Jira-and-Figma
+      handledDomainName: figma.com
       actions:
         getEntityByUrl:
-          templateUrl: >-
-            https://connectie-vnguyen5.public.atlastunnel.com/entities/getEntityByUrl
+          endpoint: connect
+          path: /entities/getEntityByUrl
         onEntityAssociated:
-          templateUrl: >-
-            https://connectie-vnguyen5.public.atlastunnel.com/entities/onEntityAssociated
+          endpoint: connect
+          path: /entities/onEntityAssociated
         onEntityDisassociated:
-          templateUrl: >-
-            https://connectie-vnguyen5.public.atlastunnel.com/entities/onEntityDisassociated
+          endpoint: connect
+          path: /entities/onEntityDisassociated
         checkAuth:
-          templateUrl: https://connectie-vnguyen5.public.atlastunnel.com/auth/checkAuth
+          endpoint: connect
+          path: /auth/checkAuth
+
+  jira:adminPage:
+    - key: figma-admin-page
+      title: Figma for Jira
+      resource: admin-ui
+      resolver:
+        endpoint: connect
+      useAsConfig: true
+
+  trigger:
+    - key: figma-installed
+      function: lifecycle-handler
+      events:
+        - avi:forge:installed:app
+
+  preUninstall:
+    - key: figma-pre-uninstall
+      function: lifecycle-handler
+
+  function:
+    - key: lifecycle-handler
+      handler: src/forge/lifecycle.handler
+
+resources:
+  - key: admin-ui
+    path: admin/dist
+
 permissions:
   scopes:
-    - read:connect-jira
-    - write:connect-jira
-    - delete:connect-jira
-modules: {}
+    - read:jira-work
+    - write:jira-work
+    - delete:jira-work
+  external:
+    fetch:
+      backend:
+        - api.figma.com
+        - connectie-vnguyen5.public.atlastunnel.com
