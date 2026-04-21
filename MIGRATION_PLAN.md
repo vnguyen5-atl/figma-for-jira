@@ -152,7 +152,7 @@ These were coupled and landed together.
   `admin/teams/teams-router.ts`
 - ✅ Updated request schemas: - Lifecycle event schemas: replaced Connect payload with simple
   `{ cloudId }` payload
-- ✅ Created `src/forge/pre-uninstall.ts`: - Forge function that does an HTTP `POST` to
+- ✅ Created `src/functions/pre-uninstall.ts`: - Forge function that does an HTTP `POST` to
   `${REMOTE_URL}/lifecycleEvents/uninstalled` with `{ cloudId }`
   in the body. Uses `@forge/api` (provided by Forge runtime) so
   the FIT is included automatically.
@@ -370,7 +370,7 @@ token. To handle these:
   `jira_app_token` table keyed by `cloudId`, storing
   `(apiBaseUrl, appSystemToken, expiresAt)`
 - **New** `src/infrastructure/repositories/jira-app-token-repository.ts`
-- **New** `src/forge/refresh-app-tokens.ts` — Forge `scheduledTrigger`
+- **New** `src/functions/refresh-app-tokens.ts` — Forge `scheduledTrigger`
   function that refreshes persisted tokens
 - `src/infrastructure/jira/jira-client/jwt-utils.ts` + test — **delete**
   (legacy Connect JWT signing, unused after Phase 4)
@@ -488,7 +488,7 @@ of `connectClientKey`. The callback route stays on the Express backend
   script in `package.json`
 - ✅ Installed `@forge/api`; replaced `require('@forge/api')` with
   `import { fetch } from '@forge/api'` in
-  `src/forge/{pre-uninstall,refresh-app-tokens}.ts`
+  `src/functions/{pre-uninstall,refresh-app-tokens}.ts`
 - ✅ Renamed `connect-user-info.ts` → `atlassian-user-info.ts`,
   `ConnectUserInfo` type → `AtlassianUserInfo`
 - ✅ Updated `scripts/setup-jest-integration-tests.ts` to drop
@@ -593,7 +593,7 @@ env $(cat .env.test | grep -v '^#' | xargs) npx jest \
 | FIT verifier               | `src/web/middleware/forge/forge-invocation-token-verifier.ts`    |
 | FIT middleware             | `src/web/middleware/forge/forge-invocation-token-middleware.ts`  |
 | FIT test mocks             | `src/web/testing/forge-invocation-token-mocks.ts`                |
-| Forge preUninstall handler | `src/forge/pre-uninstall.ts`                                     |
+| Forge preUninstall handler | `src/functions/pre-uninstall.ts`                                     |
 | DB schema                  | `prisma/schema.prisma`                                           |
 | Migration 1 (additive)     | `prisma/migrations/20260420000001_add_cloud_id/`                 |
 | Migration 2 (destructive)  | `prisma/migrations/20260420000002_drop_connect_installation/`    |

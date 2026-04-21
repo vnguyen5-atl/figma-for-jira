@@ -1,5 +1,5 @@
 app:
-  id: ari:cloud:ecosystem::app/invalid-run-forge-register
+  id: ari:cloud:ecosystem::app/108fb5e5-ffcc-4ee5-bcaf-358e52d69aef
   runtime:
     name: nodejs22.x
 
@@ -12,6 +12,10 @@ remotes:
     operations:
       - compute
       - storage
+    storage:
+      # We DO store in-scope End-User Data on the remote (Figma webhook
+      # records, design associations, OAuth credentials, etc).
+      inScopeEUD: true
     auth:
       appSystemToken:
         enabled: true
@@ -43,17 +47,19 @@ modules:
     - key: figma-admin-page
       title: Figma for Jira
       resource: admin-ui
-      resolver:
-        endpoint: connect
+      # No `resolver` is declared because this Custom UI does not use
+      # `invoke()` from `@forge/bridge`. It calls the remote backend
+      # directly via `requestRemote('connect', ...)`, which uses the
+      # `remotes` block above.
       useAsConfig: true
 
   preUninstall:
     - key: figma-pre-uninstall
-      function: pre-uninstall-handler
+      function: pre-uninstall-fn
 
   scheduledTrigger:
     - key: figma-refresh-app-tokens
-      function: refresh-app-tokens-handler
+      function: refresh-tokens-fn
       # Run hourly per installation. Each invocation receives a fresh
       # `x-forge-oauth-system` header for that installation, which the
       # handler persists to the `jira_app_token` table for use by the
@@ -62,10 +68,13 @@ modules:
       interval: hour
 
   function:
-    - key: pre-uninstall-handler
-      handler: src/forge/pre-uninstall.handler
-    - key: refresh-app-tokens-handler
-      handler: src/forge/refresh-app-tokens.handler
+    # NB: Forge function keys must be 23 chars or fewer.
+    # The handler points at src/index.ts named exports. See src/index.ts
+    # for why we route through a single entry point.
+    - key: pre-uninstall-fn
+      handler: index.preUninstall
+    - key: refresh-tokens-fn
+      handler: index.refreshAppTokens
 
 resources:
   - key: admin-ui
@@ -84,5 +93,8 @@ permissions:
   external:
     fetch:
       backend:
-        - api.figma.com
-        - connectie-vnguyen5.public.atlastunnel.com
+        # Outbound to Figma's REST API
+        - address: "https://api.figma.com"
+          inScopeEUD: true
+        # Outbound to our own remote backend (matches the `remotes` key)
+        - remote: connect

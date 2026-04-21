@@ -13,7 +13,7 @@ lifecycleEventsRouter.use(forgeInvocationTokenMiddleware);
 
 /**
  * Handles the Forge "pre-uninstall" lifecycle event, forwarded from the Forge
- * function in `src/forge/pre-uninstall.ts`.
+ * function in `src/functions/pre-uninstall.ts`.
  *
  * @remarks
  * **Issue 1: An "Uninstall" event is not retryable**
@@ -54,7 +54,7 @@ lifecycleEventsRouter.post(
  * Persists the freshest app system token for the current installation.
  *
  * Called periodically by the Forge `scheduledTrigger` function in
- * `src/forge/refresh-app-tokens.ts`. The actual persistence happens
+ * `src/functions/refresh-app-tokens.ts`. The actual persistence happens
  * inside `forgeInvocationTokenMiddleware`, so this handler is just a
  * 204 endpoint to give the trigger something to POST to.
  */
