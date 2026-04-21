@@ -28,8 +28,18 @@ correctly with Jira so that:
 - After deploying and installing the Forge app on a test tenant, **the
   "Add design" button does NOT appear** on Jira issues, suggesting the
   module is either not registered or not surfaced for Forge apps.
-- The Atlassian Data Depot bulk-ingestion REST API explicitly documents:
+- A RELATED ingestion endpoint —
+  `POST /api/ingestion/2.0/entities/bulk` (Data Depot V2 unified
+  ingestion API, source:
+  https://developer.atlassian.com/cloud/jsw-data-depot/external/rest/v2/api-group-unified-ingestion-api/)
+  — explicitly documents:
   > "Forge and OAuth2 apps cannot access this REST resource."
+
+  **Caveat:** that is a DIFFERENT endpoint from
+  `POST /rest/designs/1.0/bulk`, which is the legacy design-specific
+  endpoint this app calls. We have NOT verified whether the same
+  restriction applies to the legacy endpoint. The Data Depot V2
+  exclusion is suggestive evidence, not direct evidence.
 - Sibling providers in the same `moduleTypes` file
   (`devops:operationsInfoProvider`, `devops:devopsComponentInfoProvider`)
   are explicitly annotated with comments that ingestion from Forge apps

@@ -31,8 +31,13 @@ modules:
   # actually supported for Forge Remote apps at all. Two of the same
   # family of providers (operations, devopsComponent) are explicitly
   # documented as not ingestable from Forge apps via Data Depot V1.
-  # The bulk ingestion REST API likewise documents:
-  #   "Forge and OAuth2 apps cannot access this REST resource."
+  # A RELATED bulk ingestion endpoint
+  # (POST /api/ingestion/2.0/entities/bulk in Data Depot V2) explicitly
+  # documents: "Forge and OAuth2 apps cannot access this REST resource."
+  # NOTE: that is a DIFFERENT endpoint from the legacy
+  # POST /rest/designs/1.0/bulk that this app calls — we have not
+  # verified whether the same restriction applies to the legacy
+  # design-specific endpoint.
   # The "Add design" button does not appear in Jira after install.
   # See MIGRATION_PLAN.md "Critical Blocker" section for details.
   devops:designInfoProvider:
