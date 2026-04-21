@@ -21,6 +21,20 @@ remotes:
         enabled: true
 
 modules:
+  # The published `devops:designInfoProvider` schema (devops moduleTypes
+  # internal definition) accepts only `name`, `homeUrl`, `logoUrl`,
+  # `handledDomainName`, and `documentationUrl`. There is no `function`,
+  # `endpoint`, or `actions` property on this module type — unlike its
+  # sibling `devops:developmentInfoProvider` which does support both.
+  #
+  # WARNING / OPEN QUESTION: it is unclear whether this module is
+  # actually supported for Forge Remote apps at all. Two of the same
+  # family of providers (operations, devopsComponent) are explicitly
+  # documented as not ingestable from Forge apps via Data Depot V1.
+  # The bulk ingestion REST API likewise documents:
+  #   "Forge and OAuth2 apps cannot access this REST resource."
+  # The "Add design" button does not appear in Jira after install.
+  # See MIGRATION_PLAN.md "Critical Blocker" section for details.
   devops:designInfoProvider:
     - key: figma-design-info-provider
       name:
@@ -29,19 +43,6 @@ modules:
       logoUrl: https://connectie-vnguyen5.public.atlastunnel.com/static/figma-logo.svg
       documentationUrl: https://help.figma.com/hc/en-us/articles/360039827834-Jira-and-Figma
       handledDomainName: figma.com
-      actions:
-        getEntityByUrl:
-          endpoint: connect
-          path: /entities/getEntityByUrl
-        onEntityAssociated:
-          endpoint: connect
-          path: /entities/onEntityAssociated
-        onEntityDisassociated:
-          endpoint: connect
-          path: /entities/onEntityDisassociated
-        checkAuth:
-          endpoint: connect
-          path: /auth/checkAuth
 
   jira:adminPage:
     - key: figma-admin-page

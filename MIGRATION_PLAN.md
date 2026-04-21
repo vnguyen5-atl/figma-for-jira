@@ -4,6 +4,67 @@ This document captures the plan for migrating the Figma for Jira app from
 Atlassian Connect to Atlassian Forge, with the backend running as a Forge
 Remote (the Express server stays hosted on our own infrastructure).
 
+## 🛑 CRITICAL BLOCKER — Design Info Provider may not be supported on Forge
+
+**Status: Unresolved as of test deploy on 2026-04-21.**
+
+The entire value proposition of this app — surfacing Figma designs against
+Jira issues — depends on the `devops:designInfoProvider` module integrating
+correctly with Jira so that:
+
+1. An "Add design" button appears on Jira issues
+2. Pasting a Figma URL into the design picker triggers Jira to ingest it
+3. Design data submitted via `POST /rest/designs/1.0/bulk` is rendered
+
+**Test-deploy evidence to date:**
+
+- The `devops:designInfoProvider` module is **undocumented in the public
+  Forge module catalog**. Its schema was retrieved from an internal
+  `moduleTypes` definition file.
+- That schema accepts only `name`, `homeUrl`, `logoUrl`,
+  `handledDomainName`, and `documentationUrl`. There is **no `function`,
+  `endpoint`, or `actions` property** — unlike its sibling
+  `devops:developmentInfoProvider`.
+- After deploying and installing the Forge app on a test tenant, **the
+  "Add design" button does NOT appear** on Jira issues, suggesting the
+  module is either not registered or not surfaced for Forge apps.
+- The Atlassian Data Depot bulk-ingestion REST API explicitly documents:
+  > "Forge and OAuth2 apps cannot access this REST resource."
+- Sibling providers in the same `moduleTypes` file
+  (`devops:operationsInfoProvider`, `devops:devopsComponentInfoProvider`)
+  are explicitly annotated with comments that ingestion from Forge apps
+  via Data Depot V1 is not supported.
+
+**What this means:**
+
+If `devops:designInfoProvider` truly does not work for Forge Remote apps
+in its current form, then **this migration cannot proceed to a viable
+production state**. The architectural shape of the app would need to
+change significantly — for example, a hybrid Connect+Forge model where
+Connect continues to handle design ingestion and Forge handles UI and
+auth, until Atlassian provides a Forge-native design ingestion path.
+
+**Action required from the app owner:**
+
+1. **Engage Atlassian directly** (Forge platform team and/or the Jira
+   design provider team) to confirm whether `devops:designInfoProvider`
+   is supported for Forge Remote apps today.
+2. If yes, obtain authoritative manifest documentation (the public
+   Forge docs do not cover this module).
+3. If no, obtain a roadmap commitment for when it will be — and decide
+   whether to defer the migration or pursue a hybrid architecture in
+   the interim.
+
+This blocker should be resolved **before** the integration tests, the
+production database migration, or any other Phase 8 cleanup work is
+committed to. All other phases of this migration are technically
+complete and verified end-to-end on a test tenant (admin UI loads,
+FIT auth works, outbound Jira system token works, lifecycle uninstall
+works) — only this one capability gap stands between us and a
+functioning Forge app.
+
+---
+
 ## Guiding Decisions
 
 - **Backend hosting:** stays as a self-hosted Express service running as a
