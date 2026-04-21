@@ -570,9 +570,27 @@ env $(cat .env.test | grep -v '^#' | xargs) npx jest \
   need extra fields beyond what we have
 - **Designs API (`POST /rest/designs/1.0/bulk`) scope** — unverified;
   may need an additional scope beyond `read:jira-work`
-- **`view.getContext()` does not return `isAdminUser`** — the admin UI
-  has no client-side admin check; relies on the backend FIT middleware
-  rejecting non-admin requests. Verify acceptable UX on deploy.
+- **🔴 Admin authorization is currently a no-op (regression).** Confirmed
+  during the test deploy: the FIT does NOT carry `isAdminUser`. Our
+  verifier always sets `isAdminUser` to `undefined`, and we previously
+  also removed the `jiraAdminOnlyAuthorizationMiddleware` because the
+  context-symmetric Connect JWT (which had the claim) is gone. The
+  practical effect is that **any user with a valid FIT can hit
+  `/admin/*` endpoints**, not just Jira admins as before. Before
+  production, replace this with one of:
+  - **Server-side check via Jira API:** call
+    `POST /rest/api/3/permissions/check` with the system token to
+    verify the `accountId` from the FIT has the `ADMINISTER` global
+    permission. Add this as a per-route middleware on the admin router.
+  - **`view.getContext()` does not return `isAdminUser`** either, so a
+    client-side fallback is not viable on its own.
+- **🟡 CORS allow-list is hardcoded.** `src/app.ts` allows
+  `*.atlassian.net`, `*.jira.com`, `*.jira-dev.com` origins. This works
+  for the standard Atlassian site iframes, but will need adjustment if:
+  - Atlassian uses a different host for Custom UI iframes (e.g. a CDN)
+  - The app is installed on a Jira instance with a custom domain
+  Verify on deploy by inspecting the actual `Origin` header sent on
+  preflight requests.
 - **Forge app ID** — `manifest.yml` `app.id` and `.env*` `FORGE_APP_ID`
   still hold a placeholder. Run `forge register` and substitute in the
   real ID before deploying.
