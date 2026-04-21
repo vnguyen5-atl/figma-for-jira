@@ -73,13 +73,21 @@ export class ForgeInvocationTokenVerifier {
 			throw new Error('Invalid FIT: missing aud claim.');
 		}
 
-		const cloudId = payload['cloudId'];
-		if (typeof cloudId !== 'string') {
-			throw new Error('Invalid FIT: missing cloudId claim.');
+		// `cloudId` and `accountId` live under the nested `context` claim,
+		// e.g. { context: { cloudId: "...", accountId: "..." } }.
+		const contextClaim = payload['context'];
+		if (typeof contextClaim !== 'object' || contextClaim === null) {
+			throw new Error('Invalid FIT: missing context claim.');
 		}
+		const contextRecord = contextClaim as Record<string, unknown>;
+		const cloudId = contextRecord['cloudId'];
+		if (typeof cloudId !== 'string') {
+			throw new Error('Invalid FIT: missing context.cloudId claim.');
+		}
+		const accountId = contextRecord['accountId'];
 
-		// `apiBaseUrl` and `installationId` live under the nested `app` claim
-		// on the FIT payload, e.g. { app: { apiBaseUrl: "...", installationId: "..." } }.
+		// `apiBaseUrl` and `installationId` live under the nested `app` claim,
+		// e.g. { app: { apiBaseUrl: "...", installationId: "..." } }.
 		const appClaim = payload['app'];
 		if (typeof appClaim !== 'object' || appClaim === null) {
 			throw new Error('Invalid FIT: missing app claim.');
@@ -91,8 +99,13 @@ export class ForgeInvocationTokenVerifier {
 		}
 		const installationId = appClaimRecord['installationId'];
 
-		const accountId = payload['accountId'];
-		const isAdminUser = payload['isAdminUser'];
+		// NOTE: The FIT does NOT carry `isAdminUser` (unlike Connect's
+		// context JWT). Admin authorization must be enforced separately
+		// — typically by calling Jira's `/rest/api/3/permissions/check`
+		// or by checking against an allow-list. For now, leave this
+		// undefined and let downstream code (or a follow-up) decide
+		// the policy.
+		const isAdminUser: boolean | undefined = undefined;
 
 		return {
 			iss,

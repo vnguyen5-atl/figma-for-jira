@@ -33,6 +33,12 @@ export const forgeInvocationTokenMiddleware: RequestHandler = (
 	res: Response,
 	next: NextFunction,
 ) => {
+	// CORS preflight requests never carry an Authorization header.
+	// Skip auth so the cors() middleware can return the preflight 204.
+	if (req.method === 'OPTIONS') {
+		return next();
+	}
+
 	const authHeader = req.headers.authorization;
 
 	if (!authHeader?.startsWith('Bearer ')) {

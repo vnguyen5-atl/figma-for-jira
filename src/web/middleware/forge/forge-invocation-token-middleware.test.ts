@@ -31,7 +31,7 @@ describe('forgeInvocationTokenMiddleware', () => {
 			aud: TEST_APP_ID,
 			cloudId: TEST_CLOUD_ID,
 			accountId: TEST_ACCOUNT_ID,
-			isAdminUser: true,
+			isAdminUser: undefined,
 			apiBaseUrl: `https://api.atlassian.com/ex/jira/${TEST_CLOUD_ID}`,
 			installationId: 'test-installation-id',
 			exp: 9999999999,
@@ -47,7 +47,7 @@ describe('forgeInvocationTokenMiddleware', () => {
 		);
 		expect(locals.cloudId).toBe(TEST_CLOUD_ID);
 		expect(locals.accountId).toBe(TEST_ACCOUNT_ID);
-		expect(locals.isAdminUser).toBe(true);
+		expect(locals.isAdminUser).toBeUndefined();
 		expect(next).toHaveBeenCalledWith();
 	});
 

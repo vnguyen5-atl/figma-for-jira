@@ -10,7 +10,6 @@ export const generateForgeInvocationToken = async ({
 	appId,
 	cloudId,
 	accountId,
-	isAdminUser,
 	apiBaseUrl,
 	installationId,
 	expiresInSeconds = 99999,
@@ -18,7 +17,6 @@ export const generateForgeInvocationToken = async ({
 	appId: string;
 	cloudId: string;
 	accountId?: string;
-	isAdminUser?: boolean;
 	apiBaseUrl?: string;
 	installationId?: string;
 	expiresInSeconds?: number;
@@ -27,10 +25,14 @@ export const generateForgeInvocationToken = async ({
 
 	const now = Math.floor(Date.now() / 1000);
 
+	// Mirrors the real FIT shape observed at runtime — see
+	// src/web/middleware/forge/forge-invocation-token-verifier.ts
+	// for the corresponding extraction logic.
 	const token = await new SignJWT({
-		cloudId,
-		...(accountId !== undefined ? { accountId } : {}),
-		...(isAdminUser !== undefined ? { isAdminUser } : {}),
+		context: {
+			cloudId,
+			...(accountId !== undefined ? { accountId } : {}),
+		},
 		app: {
 			apiBaseUrl: apiBaseUrl ?? `https://api.atlassian.com/ex/jira/${cloudId}`,
 			...(installationId !== undefined ? { installationId } : {}),

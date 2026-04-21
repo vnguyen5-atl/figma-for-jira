@@ -63,11 +63,9 @@ describe('ForgeInvocationTokenVerifier', () => {
 	const APP_CLAIM = { apiBaseUrl: TEST_API_BASE_URL };
 
 	describe('valid tokens', () => {
-		it('should return claims for a valid token with accountId and isAdminUser', async () => {
+		it('should return claims for a valid token with accountId', async () => {
 			const token = await signToken(privateKey, {
-				cloudId: TEST_CLOUD_ID,
-				accountId: TEST_ACCOUNT_ID,
-				isAdminUser: true,
+				context: { cloudId: TEST_CLOUD_ID, accountId: TEST_ACCOUNT_ID },
 				app: APP_CLAIM,
 			});
 
@@ -75,15 +73,18 @@ describe('ForgeInvocationTokenVerifier', () => {
 
 			expect(claims.cloudId).toBe(TEST_CLOUD_ID);
 			expect(claims.accountId).toBe(TEST_ACCOUNT_ID);
-			expect(claims.isAdminUser).toBe(true);
+			// FIT does NOT carry isAdminUser. The verifier always returns
+			// undefined for this field — see the verifier source for the
+			// reasoning.
+			expect(claims.isAdminUser).toBeUndefined();
 			expect(claims.aud).toBe(TEST_APP_ID);
 			expect(claims.iss).toBe('forge/invocation-token');
 			expect(claims.apiBaseUrl).toBe(TEST_API_BASE_URL);
 		});
 
-		it('should return claims for a server-to-server token (no accountId or isAdminUser)', async () => {
+		it('should return claims for a server-to-server token (no accountId)', async () => {
 			const token = await signToken(privateKey, {
-				cloudId: TEST_CLOUD_ID,
+				context: { cloudId: TEST_CLOUD_ID },
 				app: APP_CLAIM,
 			});
 
@@ -116,16 +117,21 @@ describe('ForgeInvocationTokenVerifier', () => {
 			await expect(verifier.verify(token, TEST_APP_ID)).rejects.toThrow();
 		});
 
-		it('should throw for a token missing cloudId', async () => {
-			const token = await signToken(privateKey, { app: APP_CLAIM });
+		it('should throw for a token missing context.cloudId', async () => {
+			const token = await signToken(privateKey, {
+				context: {},
+				app: APP_CLAIM,
+			});
 
 			await expect(verifier.verify(token, TEST_APP_ID)).rejects.toThrow(
-				'Invalid FIT: missing cloudId claim.',
+				'Invalid FIT: missing context.cloudId claim.',
 			);
 		});
 
 		it('should throw for a token missing app.apiBaseUrl', async () => {
-			const token = await signToken(privateKey, { cloudId: TEST_CLOUD_ID });
+			const token = await signToken(privateKey, {
+				context: { cloudId: TEST_CLOUD_ID },
+			});
 
 			await expect(verifier.verify(token, TEST_APP_ID)).rejects.toThrow(
 				'Invalid FIT: missing app claim.',
