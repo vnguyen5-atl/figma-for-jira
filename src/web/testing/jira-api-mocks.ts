@@ -48,40 +48,31 @@ export const mockJiraGetIssueEndpoint = ({
 
 export const mockJiraSetAppPropertyEndpoint = ({
 	baseUrl,
-	appKey,
 	propertyKey,
 	request,
 	status = HttpStatusCode.Ok,
 }: {
 	baseUrl: URL | string;
-	appKey: string;
 	propertyKey: string;
 	request: RequestBodyMatcher;
 	status?: HttpStatusCode;
 }) => {
 	nock(baseUrl.toString())
-		.put(
-			`/rest/atlassian-connect/1/addons/${appKey}/properties/${propertyKey}`,
-			request,
-		)
+		.put(`/rest/forge/1/app/properties/${propertyKey}`, request)
 		.reply(status);
 };
 
 export const mockJiraDeleteAppPropertyEndpoint = ({
 	baseUrl,
-	appKey,
 	propertyKey,
 	status = HttpStatusCode.NoContent,
 }: {
 	baseUrl: URL | string;
-	appKey: string;
 	propertyKey: string;
 	status?: HttpStatusCode;
 }) => {
 	nock(baseUrl.toString())
-		.delete(
-			`/rest/atlassian-connect/1/addons/${appKey}/properties/${propertyKey}`,
-		)
+		.delete(`/rest/forge/1/app/properties/${propertyKey}`)
 		.reply(status);
 };
 

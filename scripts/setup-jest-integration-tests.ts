@@ -17,7 +17,8 @@ beforeEach(async () => {
 	await prismaClient.get().associatedFigmaDesign.deleteMany({});
 	await prismaClient.get().figmaTeam.deleteMany({});
 	await prismaClient.get().figmaOAuth2UserCredentials.deleteMany({});
-	await prismaClient.get().connectInstallation.deleteMany({});
+	await prismaClient.get().figmaFileWebhook.deleteMany({});
+	await prismaClient.get().jiraAppToken.deleteMany({});
 });
 
 /**

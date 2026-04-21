@@ -1,11 +1,5 @@
 import { HttpStatusCode } from 'axios';
 import request from 'supertest';
-import { v4 as uuidv4 } from 'uuid';
-
-import {
-	generateInstalledConnectLifecycleEventRequest,
-	generateUninstalledConnectLifecycleEventRequest,
-} from './testing';
 
 import app from '../../../app';
 import { buildAppUrl, getConfig } from '../../../config';
@@ -17,252 +11,98 @@ import {
 } from '../../../domain/entities/testing';
 import {
 	associatedFigmaDesignRepository,
-	cloudIdRepository,
 	figmaOAuth2UserCredentialsRepository,
 	figmaTeamRepository,
+	jiraAppTokenRepository,
 } from '../../../infrastructure/repositories';
 import {
-	generateJiraAsymmetricJwtToken,
-	mockConnectGetKeyEndpoint,
 	mockFigmaDeleteWebhookEndpoint,
+	mockForgeInvocationToken,
 	mockJiraDeleteAppPropertyEndpoint,
 } from '../../testing';
 
-describe('/lifecycleEvents', () => {
-	describe('/installed', () => {
-		it('should create a connect installation record', async () => {
-			const clientKey = uuidv4();
-			const installedRequest = generateInstalledConnectLifecycleEventRequest({
-				clientKey,
-			});
-			const keyId = uuidv4();
-			const { jwtToken, publicKey } = await generateJiraAsymmetricJwtToken({
-				keyId,
-				request: {
-					method: 'POST',
-					pathname: '/lifecycleEvents/installed',
-				},
-				cloudId: {
-					clientKey,
-				},
-				baseUrl: getConfig().app.baseUrl,
-			});
+describe('/lifecycleEvents (Forge Remote)', () => {
+	describe('POST /uninstalled', () => {
+		it('should delete app data + Figma webhooks for the cloud being uninstalled', async () => {
+			const cloudId = generateCloudId();
+			const otherCloudId = generateCloudId();
 
-			mockConnectGetKeyEndpoint({
-				baseUrl: getConfig().jira.connectKeyServerUrl,
-				keyId,
-				response: publicKey,
-				status: HttpStatusCode.Ok,
-			});
-
-			await request(app)
-				.post(buildAppUrl('lifecycleEvents/installed').pathname)
-				.set('Authorization', `JWT ${jwtToken}`)
-				.send(installedRequest)
-				.expect(HttpStatusCode.NoContent);
-
-			expect(await cloudIdRepository.getByClientKey(clientKey)).toEqual({
-				id: expect.anything(),
-				key: installedRequest.key,
-				clientKey: installedRequest.clientKey,
-				sharedSecret: installedRequest.sharedSecret,
-				baseUrl: installedRequest.baseUrl,
-				displayUrl: installedRequest.displayUrl,
-			});
-		});
-
-		it('should respond 401 when JWT token is invalid (unknown issuer)', async () => {
-			const keyId = uuidv4();
-			const { jwtToken, publicKey } = await generateJiraAsymmetricJwtToken({
-				keyId,
-				request: {
-					method: 'POST',
-					pathname: '/incorrect-pathname',
-				},
-				cloudId: {
-					clientKey: uuidv4(),
-				},
-				baseUrl: getConfig().app.baseUrl,
-			});
-
-			mockConnectGetKeyEndpoint({
-				baseUrl: getConfig().jira.connectKeyServerUrl,
-				keyId,
-				response: publicKey,
-				status: HttpStatusCode.Ok,
-			});
-
-			return request(app)
-				.post(buildAppUrl('lifecycleEvents/installed').pathname)
-				.set('Authorization', `JWT ${jwtToken}`)
-				.send(generateInstalledConnectLifecycleEventRequest())
-				.expect(HttpStatusCode.Unauthorized);
-		});
-
-		it('should respond 401 when JWT token is missing', () => {
-			return request(app)
-				.post(buildAppUrl('lifecycleEvents/installed').pathname)
-				.send(generateInstalledConnectLifecycleEventRequest())
-				.expect(HttpStatusCode.Unauthorized);
-		});
-	});
-
-	describe('/uninstalled', () => {
-		it('should delete Figma webhook and application data', async () => {
-			const [targetConnectInstallation, otherConnectInstallation] =
-				await Promise.all([
-					cloudIdRepository.upsert(generateCloudId()),
-					cloudIdRepository.upsert(generateCloudId()),
-				]);
-
-			const [
-				targetFigmaOAuth2UserCredentials1,
-				targetFigmaOAuth2UserCredentials2,
-				otherFigmaOAuth2UserCredentials,
-			] = await Promise.all([
+			const [targetTeam, otherTeam] = await Promise.all([
+				figmaTeamRepository.upsert(generateFigmaTeam({ cloudId })),
+				figmaTeamRepository.upsert(
+					generateFigmaTeam({ cloudId: otherCloudId }),
+				),
+			]);
+			const [targetCreds] = await Promise.all([
 				figmaOAuth2UserCredentialsRepository.upsert(
-					generateFigmaOAuth2UserCredentialCreateParams({
-						cloudId: targetConnectInstallation.id,
-					}),
+					generateFigmaOAuth2UserCredentialCreateParams({ cloudId }),
 				),
 				figmaOAuth2UserCredentialsRepository.upsert(
 					generateFigmaOAuth2UserCredentialCreateParams({
-						cloudId: targetConnectInstallation.id,
-					}),
-				),
-				figmaOAuth2UserCredentialsRepository.upsert(
-					generateFigmaOAuth2UserCredentialCreateParams({
-						cloudId: otherConnectInstallation.id,
+						cloudId: otherCloudId,
 					}),
 				),
 			]);
-			const [targetFigmaTeam1, targetFigmaTeam2, otherFigmaTeam] =
-				await Promise.all([
-					figmaTeamRepository.upsert(
-						generateFigmaTeam({
-							figmaAdminAtlassianUserId:
-								targetFigmaOAuth2UserCredentials1.atlassianUserId,
-							cloudId: targetConnectInstallation.id,
-						}),
-					),
-					figmaTeamRepository.upsert(
-						generateFigmaTeam({
-							figmaAdminAtlassianUserId:
-								targetFigmaOAuth2UserCredentials2.atlassianUserId,
-							cloudId: targetConnectInstallation.id,
-						}),
-					),
-					figmaTeamRepository.upsert(
-						generateFigmaTeam({
-							cloudId: otherConnectInstallation.id,
-						}),
-					),
-				]);
-			const [, otherAssociatedFigmaDesign] = await Promise.all([
+			const [, otherDesign] = await Promise.all([
 				associatedFigmaDesignRepository.upsert(
-					generateAssociatedFigmaDesign({
-						cloudId: targetConnectInstallation.id,
-					}),
+					generateAssociatedFigmaDesign({ cloudId }),
 				),
 				associatedFigmaDesignRepository.upsert(
-					generateAssociatedFigmaDesign({
-						cloudId: otherConnectInstallation.id,
-					}),
+					generateAssociatedFigmaDesign({ cloudId: otherCloudId }),
 				),
 			]);
 
-			const keyId = uuidv4();
-			const { jwtToken, publicKey } = await generateJiraAsymmetricJwtToken({
-				keyId,
-				request: {
-					method: 'POST',
-					pathname: '/lifecycleEvents/uninstalled',
-				},
-				cloudId: {
-					clientKey: targetConnectInstallation.clientKey,
-				},
-				baseUrl: getConfig().app.baseUrl,
-			});
+			const fit = await mockForgeInvocationToken({ cloudId });
 
-			mockConnectGetKeyEndpoint({
-				baseUrl: getConfig().jira.connectKeyServerUrl,
-				keyId,
-				response: publicKey,
-				status: HttpStatusCode.Ok,
-			});
 			mockFigmaDeleteWebhookEndpoint({
-				baseUrl: getConfig().figma.apiBaseUrl,
-				webhookId: targetFigmaTeam1.webhookId,
-				accessToken: targetFigmaOAuth2UserCredentials1.accessToken,
-				status: HttpStatusCode.Ok,
-			});
-			mockFigmaDeleteWebhookEndpoint({
-				baseUrl: getConfig().figma.apiBaseUrl,
-				webhookId: targetFigmaTeam2.webhookId,
-				accessToken: targetFigmaOAuth2UserCredentials2.accessToken,
-				status: HttpStatusCode.Ok,
+				baseUrl: new URL(getConfig().figma.apiBaseUrl),
+				webhookId: targetTeam.webhookId,
+				accessToken: targetCreds.accessToken,
 			});
 			mockJiraDeleteAppPropertyEndpoint({
-				baseUrl: new URL(targetConnectInstallation.baseUrl),
-				appKey: targetConnectInstallation.key,
+				baseUrl: fit.apiBaseUrl,
 				propertyKey: 'is-configured',
 			});
 
 			await request(app)
 				.post(buildAppUrl('lifecycleEvents/uninstalled').pathname)
-				.set('Authorization', `JWT ${jwtToken}`)
-				.send(
-					generateUninstalledConnectLifecycleEventRequest({
-						key: getConfig().app.key,
-						clientKey: targetConnectInstallation.clientKey,
-					}),
-				)
+				.set(fit.headers)
 				.expect(HttpStatusCode.NoContent);
-			expect(await cloudIdRepository.getAll()).toEqual([
-				otherConnectInstallation,
-			]);
-			expect(await figmaTeamRepository.getAll()).toEqual([otherFigmaTeam]);
-			expect(await figmaOAuth2UserCredentialsRepository.getAll()).toEqual([
-				otherFigmaOAuth2UserCredentials,
-			]);
-			expect(await associatedFigmaDesignRepository.getAll()).toEqual([
-				otherAssociatedFigmaDesign,
-			]);
+
+			// Target cloud's data is gone
+			expect(
+				await figmaTeamRepository.findByWebhookId(targetTeam.webhookId),
+			).toBeNull();
+			// Unrelated cloud's data is preserved
+			expect(
+				await figmaTeamRepository.findByWebhookId(otherTeam.webhookId),
+			).not.toBeNull();
+			expect(otherDesign).toBeDefined();
 		});
 
-		it('should respond 401 when JWT token is invalid (unknown issuer)', async () => {
-			const keyId = uuidv4();
-			const { jwtToken, publicKey } = await generateJiraAsymmetricJwtToken({
-				keyId,
-				request: {
-					method: 'POST',
-					pathname: '/incorrect-pathname',
-				},
-				cloudId: {
-					clientKey: uuidv4(),
-				},
-				baseUrl: getConfig().app.baseUrl,
-			});
-
-			mockConnectGetKeyEndpoint({
-				baseUrl: getConfig().jira.connectKeyServerUrl,
-				keyId,
-				response: publicKey,
-				status: HttpStatusCode.Ok,
-			});
-
-			return request(app)
+		it('should respond 401 when no FIT is provided', async () => {
+			await request(app)
 				.post(buildAppUrl('lifecycleEvents/uninstalled').pathname)
-				.set('Authorization', `JWT ${jwtToken}`)
-				.send(generateUninstalledConnectLifecycleEventRequest())
 				.expect(HttpStatusCode.Unauthorized);
 		});
+	});
 
-		it('should respond 401 when JWT token is missing', () => {
-			return request(app)
-				.post(buildAppUrl('lifecycleEvents/uninstalled').pathname)
-				.send(generateUninstalledConnectLifecycleEventRequest())
-				.expect(HttpStatusCode.Unauthorized);
+	describe('POST /refresh-app-token', () => {
+		it('should persist the latest app system token for the cloud', async () => {
+			const cloudId = generateCloudId();
+			const fit = await mockForgeInvocationToken({
+				cloudId,
+				appSystemToken: 'new-system-token-value',
+			});
+
+			await request(app)
+				.post(buildAppUrl('lifecycleEvents/refresh-app-token').pathname)
+				.set(fit.headers)
+				.expect(HttpStatusCode.NoContent);
+
+			const stored = await jiraAppTokenRepository.getJiraCallContext(cloudId);
+			expect(stored.cloudId).toBe(cloudId);
+			expect(stored.appSystemToken).toBe('new-system-token-value');
 		});
 	});
 });
