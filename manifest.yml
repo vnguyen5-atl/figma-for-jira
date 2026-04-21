@@ -43,6 +43,19 @@ modules:
       logoUrl: https://connectie-vnguyen5.public.atlastunnel.com/static/figma-logo.svg
       documentationUrl: https://help.figma.com/hc/en-us/articles/360039827834-Jira-and-Figma
       handledDomainName: figma.com
+      actions:
+        getEntityByUrl:
+          endpoint: connect
+          path: /entities/getEntityByUrl
+        onEntityAssociated:
+          endpoint: connect
+          path: /entities/onEntityAssociated
+        onEntityDisassociated:
+          endpoint: connect
+          path: /entities/onEntityDisassociated
+        checkAuth:
+          endpoint: connect
+          path: /auth/checkAuth
 
   jira:adminPage:
     - key: figma-admin-page
