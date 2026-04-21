@@ -47,11 +47,23 @@ modules:
     - key: figma-admin-page
       title: Figma for Jira
       resource: admin-ui
-      # No `resolver` is declared because this Custom UI does not use
-      # `invoke()` from `@forge/bridge`. It calls the remote backend
-      # directly via `requestRemote('connect', ...)`, which uses the
-      # `remotes` block above.
+      resolver:
+        # Routes Custom UI invokeRemote() calls through the
+        # `connect-endpoint` defined below, which causes Forge to
+        # inject the x-forge-oauth-system header on every request to
+        # the remote.
+        endpoint: connect-endpoint
       useAsConfig: true
+
+  endpoint:
+    # Endpoint module wraps the existing `connect` remote with auth
+    # config. Required for Custom UI invokeRemote() calls to receive
+    # the x-forge-oauth-system header. The `connect` remote is unchanged.
+    - key: connect-endpoint
+      remote: connect
+      auth:
+        appSystemToken:
+          enabled: true
 
   preUninstall:
     - key: figma-pre-uninstall

@@ -1,82 +1,87 @@
-import { requestRemote } from '@forge/bridge';
+import { invokeRemote } from '@forge/bridge';
 
 /**
- * Wrapper around the Forge bridge `requestRemote` for calling our remote
+ * Wrapper around the Forge bridge `invokeRemote` for calling our remote
  * Express backend.
  *
- * Forge automatically injects a Forge Invocation Token (FIT) as the
- * `Authorization: Bearer …` header on the request. The backend's
- * `forgeInvocationTokenMiddleware` verifies the FIT and extracts
- * `cloudId` / `accountId` / `isAdminUser` / `apiBaseUrl` for use by
- * downstream handlers. We therefore do not need to attach any auth
- * tokens manually.
+ * Why `invokeRemote` and not `requestRemote`?
+ * The `requestRemote` API explicitly does NOT include OAuth tokens on
+ * the outbound request. `invokeRemote` does — it routes through the
+ * `endpoint` declared in `manifest.yml` (referenced via the UI module's
+ * `resolver.endpoint` property), which is the only way Forge will
+ * inject the `x-forge-oauth-system` header that our backend needs to
+ * call Atlassian APIs on behalf of the app.
  *
- * The first argument (`'connect'`) refers to the `key` of the remote
- * defined under `remotes:` in the Forge `manifest.yml`.
+ * `invokeRemote` returns a parsed JSON response shape rather than a
+ * Fetch-style `Response`:
+ *   { body: <parsed body>, headers: {...}, ...status info }
+ *
+ * Non-2xx responses do NOT throw automatically — only 401s reject the
+ * promise. We add status checking ourselves to mirror the previous
+ * Axios-style ergonomics callers depended on.
  */
 
-const REMOTE_KEY = 'connect';
+interface InvokeRemoteResult {
+	body?: unknown;
+	headers?: Record<string, string>;
+	statusCode?: number;
+	status?: number;
+}
 
 /**
- * Thrown when a remote request returns a non-2xx response. Mirrors the bits
- * of `AxiosError` the admin UI used to depend on (status code + parsed body).
+ * Thrown when a remote request returns a non-2xx response. Mirrors the
+ * subset of `AxiosError` the admin UI relied on (status code + body).
  */
 export class RemoteResponseError extends Error {
 	readonly status: number;
 	readonly body: unknown;
 
-	constructor(status: number, statusText: string, body: unknown) {
-		super(`Remote request failed: ${status} ${statusText}`);
+	constructor(status: number, body: unknown) {
+		super(`Remote request failed: ${status}`);
 		this.name = 'RemoteResponseError';
 		this.status = status;
 		this.body = body;
 	}
 }
 
-const ensureOk = async (response: Response): Promise<Response> => {
-	if (!response.ok) {
-		let body: unknown = undefined;
-		try {
-			body = await response.clone().json();
-		} catch {
-			try {
-				body = await response.clone().text();
-			} catch {
-				/* swallow */
-			}
-		}
-		throw new RemoteResponseError(response.status, response.statusText, body);
-	}
-	return response;
-};
+const getStatus = (result: InvokeRemoteResult): number =>
+	result.statusCode ?? result.status ?? 200;
 
-export const remoteFetch = async (
-	path: string,
-	init: RequestInit = {},
-): Promise<Response> => {
-	const response = await requestRemote(REMOTE_KEY, { path, ...init });
-	return await ensureOk(response);
+const ensureOk = (result: InvokeRemoteResult): InvokeRemoteResult => {
+	const status = getStatus(result);
+	if (status >= 400) {
+		throw new RemoteResponseError(status, result.body);
+	}
+	return result;
 };
 
 export const remoteGetJson = async <T>(path: string): Promise<T> => {
-	const response = await remoteFetch(path, { method: 'GET' });
-	return (await response.json()) as T;
+	const result = (await invokeRemote({
+		path,
+		method: 'GET',
+	})) as InvokeRemoteResult;
+	ensureOk(result);
+	return result.body as T;
 };
 
 export const remotePostJson = async <T>(
 	path: string,
 	body?: unknown,
 ): Promise<T | undefined> => {
-	const response = await remoteFetch(path, {
+	const result = (await invokeRemote({
+		path,
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: body !== undefined ? JSON.stringify(body) : undefined,
-	});
-	if (response.status === 204) return undefined;
-	const text = await response.text();
-	return text ? (JSON.parse(text) as T) : undefined;
+		body,
+	})) as InvokeRemoteResult;
+	ensureOk(result);
+	return result.body as T | undefined;
 };
 
 export const remoteDelete = async (path: string): Promise<void> => {
-	await remoteFetch(path, { method: 'DELETE' });
+	const result = (await invokeRemote({
+		path,
+		method: 'DELETE',
+	})) as InvokeRemoteResult;
+	ensureOk(result);
 };
