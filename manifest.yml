@@ -48,19 +48,22 @@ modules:
       logoUrl: https://connectie-vnguyen5.public.atlastunnel.com/static/figma-logo.svg
       documentationUrl: https://help.figma.com/hc/en-us/articles/360039827834-Jira-and-Figma
       handledDomainName: figma.com
+      # actions: shape matches the property name used by sibling devops
+      # providers in the internal moduleTypes schema (e.g.
+      # devops:developmentInfoProvider.actions.createBranch.urlTemplate).
+      # Each action's value is a full URL to the corresponding backend
+      # route. NOTE: even with this schema-matching shape, the design
+      # info provider schema itself does NOT declare `actions:` as
+      # valid — the block is retained as documented intent only.
       actions:
         getEntityByUrl:
-          endpoint: connect
-          path: /entities/getEntityByUrl
+          urlTemplate: https://connectie-vnguyen5.public.atlastunnel.com/entities/getEntityByUrl
         onEntityAssociated:
-          endpoint: connect
-          path: /entities/onEntityAssociated
+          urlTemplate: https://connectie-vnguyen5.public.atlastunnel.com/entities/onEntityAssociated
         onEntityDisassociated:
-          endpoint: connect
-          path: /entities/onEntityDisassociated
+          urlTemplate: https://connectie-vnguyen5.public.atlastunnel.com/entities/onEntityDisassociated
         checkAuth:
-          endpoint: connect
-          path: /auth/checkAuth
+          urlTemplate: https://connectie-vnguyen5.public.atlastunnel.com/auth/checkAuth
 
   jira:adminPage:
     - key: figma-admin-page
