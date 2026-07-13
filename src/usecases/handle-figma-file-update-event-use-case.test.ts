@@ -7,26 +7,35 @@ import { FigmaTeamAuthStatus } from '../domain/entities';
 import {
 	generateAssociatedFigmaDesign,
 	generateAtlassianDesign,
-	generateConnectInstallation,
+	generateCloudId,
 	generateFigmaDesignIdentifier,
 	generateFigmaFileKey,
 	generateFigmaFileWebhook,
 	generateFigmaNodeId,
 	generateFigmaTeam,
+	generateJiraCallContext,
 } from '../domain/entities/testing';
 import {
 	figmaService,
 	UnauthorizedFigmaServiceError,
 } from '../infrastructure/figma';
 import { jiraService } from '../infrastructure/jira';
+import { generateSuccessfulSubmitDesignsResponse } from '../infrastructure/jira/jira-client/testing';
 import {
 	associatedFigmaDesignRepository,
-	connectInstallationRepository,
 	figmaTeamRepository,
+	jiraAppTokenRepository,
 } from '../infrastructure/repositories';
 import type { FigmaWebhookInfo } from '../web/routes/figma';
 
 describe('handleFigmaFileUpdateEventUseCase', () => {
+	beforeEach(() => {
+		jest
+			.spyOn(jiraAppTokenRepository, 'getJiraCallContext')
+			.mockImplementation((cloudId: string) =>
+				Promise.resolve(generateJiraCallContext({ cloudId })),
+			);
+	});
 	describe('file webhook', () => {
 		beforeEach(() => {
 			jest.spyOn(launchDarkly, 'getLDClient').mockResolvedValue(null);
@@ -34,14 +43,12 @@ describe('handleFigmaFileUpdateEventUseCase', () => {
 		});
 
 		it('should handle file webhook events', async () => {
-			const connectInstallation = generateConnectInstallation();
-			jest
-				.spyOn(connectInstallationRepository, 'get')
-				.mockResolvedValue(connectInstallation);
+			const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 
 			const figmaFileWebhook = generateFigmaFileWebhook({
 				createdBy: {
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 					atlassianUserId: uuidv4(),
 				},
 			});
@@ -55,7 +62,7 @@ describe('handleFigmaFileUpdateEventUseCase', () => {
 			const associatedFigmaDesigns = associatedFigmaDesignIds.map((designId) =>
 				generateAssociatedFigmaDesign({
 					designId,
-					connectInstallationId: connectInstallation.id,
+					cloudId: cloudId,
 				}),
 			);
 			const associatedFigmaDesignsWithDuplicates = [
@@ -63,10 +70,7 @@ describe('handleFigmaFileUpdateEventUseCase', () => {
 				...associatedFigmaDesigns,
 			];
 			jest
-				.spyOn(
-					associatedFigmaDesignRepository,
-					'findManyByFileKeyAndConnectInstallationId',
-				)
+				.spyOn(associatedFigmaDesignRepository, 'findManyByFileKeyAndCloudId')
 				.mockResolvedValue(associatedFigmaDesignsWithDuplicates);
 			const associatedAtlassianDesigns = associatedFigmaDesigns.map(
 				(figmaDesign) =>
@@ -78,7 +82,7 @@ describe('handleFigmaFileUpdateEventUseCase', () => {
 				.spyOn(figmaService, 'getAvailableDesignsFromSameFile')
 				.mockResolvedValue(associatedAtlassianDesigns);
 
-			jest.spyOn(jiraService, 'submitDesigns').mockResolvedValue();
+			jest.spyOn(jiraService, 'submitDesigns').mockResolvedValue(generateSuccessfulSubmitDesignsResponse());
 
 			await handleFigmaFileUpdateEventUseCase.execute(
 				{ figmaFileWebhook, webhookType: 'file' },
@@ -91,15 +95,16 @@ describe('handleFigmaFileUpdateEventUseCase', () => {
 			);
 			expect(jiraService.submitDesigns).toHaveBeenCalledWith(
 				associatedAtlassianDesigns,
-				connectInstallation,
+				jiraCallContext,
 			);
 		});
 	});
 
 	describe('error handling', () => {
-		const connectInstallation = generateConnectInstallation();
+		const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 		const figmaTeam = generateFigmaTeam({
-			connectInstallationId: connectInstallation.id,
+			cloudId: cloudId,
 		});
 		const fileKey = uuidv4();
 		const associatedFigmaDesigns = [1, 2, 3].map((i) =>
@@ -108,7 +113,7 @@ describe('handleFigmaFileUpdateEventUseCase', () => {
 					fileKey,
 					nodeId: `${i}:${i}`,
 				}),
-				connectInstallationId: connectInstallation.id,
+				cloudId: cloudId,
 			}),
 		);
 
@@ -140,18 +145,12 @@ describe('handleFigmaFileUpdateEventUseCase', () => {
 			jest.spyOn(figmaService, 'getTeamName').mockRejectedValue(new Error());
 			jest.spyOn(figmaTeamRepository, 'updateAuthStatus').mockResolvedValue();
 			jest
-				.spyOn(connectInstallationRepository, 'get')
-				.mockResolvedValue(connectInstallation);
-			jest
-				.spyOn(
-					associatedFigmaDesignRepository,
-					'findManyByFileKeyAndConnectInstallationId',
-				)
+				.spyOn(associatedFigmaDesignRepository, 'findManyByFileKeyAndCloudId')
 				.mockResolvedValue(associatedFigmaDesigns);
 			jest
 				.spyOn(figmaService, 'getAvailableDesignsFromSameFile')
 				.mockResolvedValue(associatedAtlassianDesigns);
-			jest.spyOn(jiraService, 'submitDesigns').mockResolvedValue();
+			jest.spyOn(jiraService, 'submitDesigns').mockResolvedValue(generateSuccessfulSubmitDesignsResponse());
 
 			const webhookInfo: FigmaWebhookInfo = {
 				figmaTeam,
@@ -162,7 +161,7 @@ describe('handleFigmaFileUpdateEventUseCase', () => {
 			expect(figmaTeamRepository.updateAuthStatus).not.toHaveBeenCalled();
 			expect(jiraService.submitDesigns).toHaveBeenCalledWith(
 				associatedAtlassianDesigns,
-				connectInstallation,
+				jiraCallContext,
 			);
 		});
 
@@ -180,18 +179,12 @@ describe('handleFigmaFileUpdateEventUseCase', () => {
 				.spyOn(figmaTeamRepository, 'updateTeamName')
 				.mockRejectedValue(new Error('update team name error'));
 			jest
-				.spyOn(connectInstallationRepository, 'get')
-				.mockResolvedValue(connectInstallation);
-			jest
-				.spyOn(
-					associatedFigmaDesignRepository,
-					'findManyByFileKeyAndConnectInstallationId',
-				)
+				.spyOn(associatedFigmaDesignRepository, 'findManyByFileKeyAndCloudId')
 				.mockResolvedValue(associatedFigmaDesigns);
 			jest
 				.spyOn(figmaService, 'getAvailableDesignsFromSameFile')
 				.mockResolvedValue(associatedAtlassianDesigns);
-			jest.spyOn(jiraService, 'submitDesigns').mockResolvedValue();
+			jest.spyOn(jiraService, 'submitDesigns').mockResolvedValue(generateSuccessfulSubmitDesignsResponse());
 
 			const webhookInfo: FigmaWebhookInfo = {
 				figmaTeam,
@@ -201,7 +194,7 @@ describe('handleFigmaFileUpdateEventUseCase', () => {
 
 			expect(jiraService.submitDesigns).toHaveBeenCalledWith(
 				associatedAtlassianDesigns,
-				connectInstallation,
+				jiraCallContext,
 			);
 		});
 
@@ -211,13 +204,7 @@ describe('handleFigmaFileUpdateEventUseCase', () => {
 				.mockResolvedValue(figmaTeam.teamName);
 			jest.spyOn(figmaTeamRepository, 'updateTeamName').mockResolvedValue();
 			jest
-				.spyOn(connectInstallationRepository, 'get')
-				.mockResolvedValue(connectInstallation);
-			jest
-				.spyOn(
-					associatedFigmaDesignRepository,
-					'findManyByFileKeyAndConnectInstallationId',
-				)
+				.spyOn(associatedFigmaDesignRepository, 'findManyByFileKeyAndCloudId')
 				.mockResolvedValue(associatedFigmaDesigns);
 			jest
 				.spyOn(figmaService, 'getAvailableDesignsFromSameFile')
@@ -243,13 +230,7 @@ describe('handleFigmaFileUpdateEventUseCase', () => {
 				.mockRejectedValue(figmaTeam.teamName);
 			jest.spyOn(figmaTeamRepository, 'updateAuthStatus').mockResolvedValue();
 			jest
-				.spyOn(connectInstallationRepository, 'get')
-				.mockResolvedValue(connectInstallation);
-			jest
-				.spyOn(
-					associatedFigmaDesignRepository,
-					'findManyByFileKeyAndConnectInstallationId',
-				)
+				.spyOn(associatedFigmaDesignRepository, 'findManyByFileKeyAndCloudId')
 				.mockResolvedValue(associatedFigmaDesigns);
 			jest
 				.spyOn(figmaService, 'getAvailableDesignsFromSameFile')

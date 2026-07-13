@@ -1,0 +1,134 @@
+app:
+  id: ari:cloud:ecosystem::app/108fb5e5-ffcc-4ee5-bcaf-358e52d69aef
+  runtime:
+    name: nodejs22.x
+
+remotes:
+  - key: connect
+    baseUrl: https://connectie-vnguyen5.public.atlastunnel.com
+    # We make outbound calls to Atlassian APIs (Jira) using the appSystemToken,
+    # which is "compute". We also persist EUD (Figma file webhook + design data)
+    # in our own Postgres on the remote — that's "storage".
+    operations:
+      - compute
+      - storage
+    storage:
+      # We DO store in-scope End-User Data on the remote (Figma webhook
+      # records, design associations, OAuth credentials, etc).
+      inScopeEUD: true
+    auth:
+      appSystemToken:
+        enabled: true
+
+modules:
+  # The published `devops:designInfoProvider` schema (devops moduleTypes
+  # internal definition) accepts only `name`, `homeUrl`, `logoUrl`,
+  # `handledDomainName`, and `documentationUrl`. There is no `function`,
+  # `endpoint`, or `actions` property on this module type — unlike its
+  # sibling `devops:developmentInfoProvider` which does support both.
+  #
+  # WARNING / OPEN QUESTION: it is unclear whether this module is
+  # actually supported for Forge Remote apps at all. Two of the same
+  # family of providers (operations, devopsComponent) are explicitly
+  # documented as not ingestable from Forge apps via Data Depot V1.
+  # A RELATED bulk ingestion endpoint
+  # (POST /api/ingestion/2.0/entities/bulk in Data Depot V2) explicitly
+  # documents: "Forge and OAuth2 apps cannot access this REST resource."
+  # NOTE: that is a DIFFERENT endpoint from the legacy
+  # POST /rest/designs/1.0/bulk that this app calls — we have not
+  # verified whether the same restriction applies to the legacy
+  # design-specific endpoint.
+  # The "Add design" button does not appear in Jira after install.
+  # See MIGRATION_PLAN.md "Critical Blocker" section for details.
+  devops:designInfoProvider:
+    - key: figma-design-info-provider
+      name:
+        value: Figma
+      homeUrl: https://www.figma.com/
+      logoUrl: https://connectie-vnguyen5.public.atlastunnel.com/static/figma-logo.svg
+      documentationUrl: https://help.figma.com/hc/en-us/articles/360039827834-Jira-and-Figma
+      handledDomainName: figma.com
+      # actions: shape matches the property name used by sibling devops
+      # providers in the internal moduleTypes schema (e.g.
+      # devops:developmentInfoProvider.actions.createBranch.urlTemplate).
+      # Each action's value is a full URL to the corresponding backend
+      # route. NOTE: even with this schema-matching shape, the design
+      # info provider schema itself does NOT declare `actions:` as
+      # valid — the block is retained as documented intent only.
+      actions:
+        getEntityByUrl:
+          urlTemplate: https://connectie-vnguyen5.public.atlastunnel.com/entities/getEntityByUrl
+        onEntityAssociated:
+          urlTemplate: https://connectie-vnguyen5.public.atlastunnel.com/entities/onEntityAssociated
+        onEntityDisassociated:
+          urlTemplate: https://connectie-vnguyen5.public.atlastunnel.com/entities/onEntityDisassociated
+        checkAuth:
+          urlTemplate: https://connectie-vnguyen5.public.atlastunnel.com/auth/checkAuth
+
+  jira:adminPage:
+    - key: figma-admin-page
+      title: Figma for Jira
+      resource: admin-ui
+      resolver:
+        # Routes Custom UI invokeRemote() calls through the
+        # `connect-endpoint` defined below, which causes Forge to
+        # inject the x-forge-oauth-system header on every request to
+        # the remote.
+        endpoint: connect-endpoint
+      useAsConfig: true
+
+  endpoint:
+    # Endpoint module wraps the existing `connect` remote with auth
+    # config. Required for Custom UI invokeRemote() calls to receive
+    # the x-forge-oauth-system header. The `connect` remote is unchanged.
+    - key: connect-endpoint
+      remote: connect
+      auth:
+        appSystemToken:
+          enabled: true
+
+  preUninstall:
+    - key: figma-pre-uninstall
+      function: pre-uninstall-fn
+
+  scheduledTrigger:
+    - key: figma-refresh-app-tokens
+      function: refresh-tokens-fn
+      # Run hourly per installation. Each invocation receives a fresh
+      # `x-forge-oauth-system` header for that installation, which the
+      # handler persists to the `jira_app_token` table for use by the
+      # Figma webhook flow (which has no inbound FIT of its own).
+      # Valid intervals per Forge docs: fiveMinute, hour, day, week.
+      interval: hour
+
+  function:
+    # NB: Forge function keys must be 23 chars or fewer.
+    # The handler points at src/index.ts named exports. See src/index.ts
+    # for why we route through a single entry point.
+    - key: pre-uninstall-fn
+      handler: index.preUninstall
+    - key: refresh-tokens-fn
+      handler: index.refreshAppTokens
+
+resources:
+  - key: admin-ui
+    path: admin/dist
+
+permissions:
+  scopes:
+    # Required for: GET /rest/api/3/issue and POST /rest/api/3/permissions/check
+    - read:jira-work
+    # Required (Beta; future-mandatory) for: PUT/DELETE /rest/forge/1/app/properties/*
+    - write:app-data:jira
+    # Required to receive the x-forge-oauth-system header on inbound calls
+    - read:app-system-token
+    # Note: scope for POST /rest/designs/1.0/bulk (submit designs) is unverified
+    # — see MIGRATION_PLAN.md "Open questions" for Phase 5.
+  external:
+    fetch:
+      backend:
+        # Outbound to Figma's REST API
+        - address: "https://api.figma.com"
+          inScopeEUD: true
+        # Outbound to our own remote backend (matches the `remotes` key)
+        - remote: connect

@@ -4,50 +4,50 @@ import {
 } from './jira-app-configuration-service';
 import { jiraClient } from './jira-client';
 
-import type { ConnectInstallation } from '../../domain/entities';
-import { generateConnectInstallation } from '../../domain/entities/testing';
+import type { JiraCallContext } from '../../domain/entities';
+import { generateJiraCallContext } from '../../domain/entities/testing';
 import {
 	ForbiddenHttpClientError,
 	NotFoundHttpClientError,
 } from '../http-client-errors';
 
-describe('JiraService', () => {
+describe('JiraAppConfigurationService', () => {
 	describe('setAppConfigurationState', () => {
 		it('should set configuration state in app properties', async () => {
 			const configurationState = ConfigurationState.CONFIGURED;
-			const connectInstallation = generateConnectInstallation();
+			const jiraCallContext = generateJiraCallContext();
 			jest.spyOn(jiraClient, 'setAppProperty').mockResolvedValue(undefined);
 
 			await jiraAppConfigurationService.setAppConfigurationState(
 				configurationState,
-				connectInstallation,
+				jiraCallContext,
 			);
 
 			expect(jiraClient.setAppProperty).toHaveBeenCalledWith(
 				'is-configured',
 				{ isConfigured: configurationState },
-				connectInstallation,
+				jiraCallContext,
 			);
 		});
 	});
 
 	describe('deleteAppConfigurationState', () => {
-		let connectInstallation: ConnectInstallation;
+		let jiraCallContext: JiraCallContext;
 
 		beforeEach(() => {
-			connectInstallation = generateConnectInstallation();
+			jiraCallContext = generateJiraCallContext();
 		});
 
 		it('should delete the configuration state in app properties', async () => {
 			jest.spyOn(jiraClient, 'deleteAppProperty').mockResolvedValue(undefined);
 
 			await jiraAppConfigurationService.deleteAppConfigurationState(
-				connectInstallation,
+				jiraCallContext,
 			);
 
 			expect(jiraClient.deleteAppProperty).toHaveBeenCalledWith(
 				'is-configured',
-				connectInstallation,
+				jiraCallContext,
 			);
 		});
 
@@ -59,7 +59,7 @@ describe('JiraService', () => {
 
 			await expect(
 				jiraAppConfigurationService.deleteAppConfigurationState(
-					connectInstallation,
+					jiraCallContext,
 				),
 			).resolves.not.toThrow(notFoundError);
 		});
@@ -72,7 +72,7 @@ describe('JiraService', () => {
 
 			await expect(
 				jiraAppConfigurationService.deleteAppConfigurationState(
-					connectInstallation,
+					jiraCallContext,
 				),
 			).rejects.toThrow(unexpectedError);
 		});

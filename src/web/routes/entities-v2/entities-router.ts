@@ -24,11 +24,11 @@ import {
 } from '../../../usecases';
 import { BadRequestResponseStatusError } from '../../errors';
 import { requestSchemaValidationMiddleware } from '../../middleware';
-import { jiraServerToServerSymmetricJwtAuthenticationMiddleware } from '../../middleware/jira';
+import { forgeInvocationTokenMiddleware } from '../../middleware/forge';
 
 export const entitiesRouterV2 = Router();
 
-entitiesRouterV2.use(jiraServerToServerSymmetricJwtAuthenticationMiddleware);
+entitiesRouterV2.use(forgeInvocationTokenMiddleware);
 
 /**
  * Returns Figma design details for the given URL.
@@ -42,7 +42,7 @@ entitiesRouterV2.post(
 		res: GetEntityByUrlResponse,
 		next: NextFunction,
 	) => {
-		const { connectInstallation } = res.locals;
+		const { cloudId } = res.locals;
 		const atlassianUserId = req.body.user.id;
 
 		const designUrl = tryParseUrl(req.body.entity.url);
@@ -55,7 +55,7 @@ entitiesRouterV2.post(
 			.execute({
 				designUrl,
 				atlassianUserId,
-				connectInstallation,
+				cloudId,
 			})
 			.then((design) => res.status(HttpStatusCode.Ok).send(design))
 			.catch(next);
@@ -73,7 +73,7 @@ entitiesRouterV2.put(
 		res: OnEntityAssociatedResponse,
 		next: NextFunction,
 	) => {
-		const { connectInstallation } = res.locals;
+		const { jiraCallContext } = res.locals;
 		const atlassianUserId = req.body.user?.id;
 
 		onDesignAssociatedWithIssueUseCaseParams
@@ -81,7 +81,7 @@ entitiesRouterV2.put(
 				design: req.body.entity,
 				issue: req.body.associatedWith,
 				atlassianUserId,
-				connectInstallation,
+				jiraCallContext,
 			})
 			.then(() => res.status(HttpStatusCode.Ok).send())
 			.catch(next);
@@ -99,7 +99,7 @@ entitiesRouterV2.put(
 		res: OnEntityDisassociatedResponse,
 		next: NextFunction,
 	) => {
-		const { connectInstallation } = res.locals;
+		const { jiraCallContext } = res.locals;
 		const atlassianUserId = req.body.user?.id;
 
 		onDesignDisassociatedFromIssueUseCase
@@ -107,7 +107,7 @@ entitiesRouterV2.put(
 				design: req.body.entity,
 				issue: req.body.disassociatedFrom,
 				atlassianUserId,
-				connectInstallation,
+				jiraCallContext,
 			})
 			.then(() => res.status(HttpStatusCode.Ok).send())
 			.catch(next);

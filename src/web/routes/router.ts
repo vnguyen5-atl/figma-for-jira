@@ -1,5 +1,4 @@
 import { HttpStatusCode } from 'axios';
-import type { Request, Response } from 'express';
 import { Router } from 'express';
 
 import { adminRouter } from './admin';
@@ -9,8 +8,6 @@ import { figmaRouter } from './figma';
 import { lifecycleEventsRouter } from './lifecycle-events';
 import { staticRouter } from './static';
 
-import { connectAppDescriptor } from '../../atlassian-connect';
-
 export const rootRouter = Router();
 
 // Healthcheck
@@ -18,15 +15,10 @@ rootRouter.get('/healthcheck', (_, res) => {
 	res.status(HttpStatusCode.Ok).send('Server up and working.');
 });
 
-// Connect app manifest
-rootRouter.get('/atlassian-connect.json', (_: Request, res: Response) => {
-	res.status(HttpStatusCode.Ok).json(connectAppDescriptor);
-});
-
-// Static resources
+// Static resources (Figma OAuth result pages, etc.)
 rootRouter.use('/static', staticRouter);
 
-// Connect lifecycle events
+// Forge lifecycle events (proxied from the Forge function via Forge Remote)
 rootRouter.use('/lifecycleEvents', lifecycleEventsRouter);
 
 rootRouter.use('/admin', adminRouter);

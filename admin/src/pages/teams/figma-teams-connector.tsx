@@ -5,13 +5,12 @@ import TextField from '@atlaskit/textfield';
 import { token } from '@atlaskit/tokens';
 import { css } from '@emotion/react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { AxiosError } from 'axios';
 import { useState } from 'react';
 
 import { ConnectTeamSuccessScreen } from './connect-teams-success-screen';
 
 import type { FigmaUser } from '../../api';
-import { connectTeam } from '../../api';
+import { connectTeam, RemoteResponseError } from '../../api';
 import {
 	ConnectBanner,
 	FigmaPermissionsPopup,
@@ -20,22 +19,14 @@ import {
 	Page,
 } from '../../components';
 import { openInBrowser, parseTeamIdFromFigmaUrl } from '../../utils';
-import { HttpStatusCode } from 'axios';
+
+const HTTP_STATUS_PAYMENT_REQUIRED = 402;
 
 type ConnectTeamProps = {
 	authorizationEndpoint: string;
 	currentUser: FigmaUser;
 	onClose?: () => void;
 	site: string;
-};
-
-type ConnectTeamsError = AxiosError & {
-	response: {
-		data: {
-			message: string;
-			detail?: string;
-		};
-	};
 };
 
 export function FigmaTeamConnector({
@@ -61,14 +52,17 @@ export function FigmaTeamConnector({
 		useState<boolean>(false);
 	const connectTeamMutation = useMutation({
 		mutationFn: async (teamId: string) => {
-			return (await connectTeam(teamId)).data;
+			return await connectTeam(teamId);
 		},
 		onSuccess: () => {
 			setShowUnauthorizedError(false);
 			return queryClient.invalidateQueries({ queryKey: ['teams'] });
 		},
-		onError: (error: ConnectTeamsError) => {
-			if (error.response?.status === HttpStatusCode.PaymentRequired) {
+		onError: (error: unknown) => {
+			if (
+				error instanceof RemoteResponseError &&
+				error.status === HTTP_STATUS_PAYMENT_REQUIRED
+			) {
 				setShowUnauthorizedError(false);
 				setValidationError('You need a paid Figma plan to add teams to Jira');
 			} else {

@@ -1,7 +1,5 @@
-import type { Method } from 'axios';
 import axios, { AxiosHeaders } from 'axios';
 
-import { createJwtToken } from './jwt-utils';
 import {
 	CHECK_PERMISSIONS_RESPONSE_SCHEMA,
 	GET_ISSUE_RESPONSE_SCHEMA,
@@ -15,45 +13,37 @@ import type {
 	SubmitDesignsResponse,
 } from './types';
 
-import { Duration } from '../../../common/duration';
 import { assertSchema } from '../../../common/schema-validation';
-import type { ConnectInstallation } from '../../../domain/entities';
+import type { JiraCallContext } from '../../../domain/entities';
 import { withAxiosErrorTranslation } from '../../axios-utils';
-
-const TOKEN_EXPIRES_IN = Duration.ofMinutes(3);
 
 /**
  * A Jira API client.
  *
- * @see https://developer.atlassian.com/cloud/jira/software/rest/intro/#introduction
+ * @remarks
+ * In Phase 5 of the Connect → Forge migration, every method takes a
+ * {@link JiraCallContext} carrying the Forge-provided `apiBaseUrl` and
+ * `appSystemToken`. The base URL must be exactly the value Forge sends
+ * in the FIT (`app.apiBaseUrl` claim) — NOT a cloudId-derived URL.
+ *
+ * @see https://developer.atlassian.com/platform/forge/remote/calling-product-apis
  */
 class JiraClient {
 	/**
 	 * Insert/update design data.
 	 *
-	 * Designs are identified by `designId`, and existing design data for the same design will be replaced if it exists
-	 * and the `updateSequenceNumber` of the existing data is less than the incoming data.
-	 *
-	 * Submissions are performed asynchronously. Submitted data will eventually be available in Jira; most updates are
-	 * available within a short period of time, but may take some time during peak load and/or maintenance times.
-	 *
 	 * @throws {HttpClientError} An error associated with specific HTTP response status codes.
 	 */
 	submitDesigns = async (
 		payload: SubmitDesignsRequest,
-		connectInstallation: ConnectInstallation,
+		ctx: JiraCallContext,
 	): Promise<SubmitDesignsResponse> => {
-		const context = {
-			baseUrl: connectInstallation.baseUrl,
-			clientKey: connectInstallation.clientKey,
-		};
+		const context = { cloudId: ctx.cloudId };
 		return withAxiosErrorTranslation(async () => {
-			const url = new URL('rest/designs/1.0/bulk', connectInstallation.baseUrl);
+			const url = this.buildUrl(ctx, 'rest/designs/1.0/bulk');
 
-			const response = await axios.post<unknown>(url.toString(), payload, {
-				headers: new AxiosHeaders().setAuthorization(
-					this.buildAuthorizationHeader('POST', url, connectInstallation),
-				),
+			const response = await axios.post<unknown>(url, payload, {
+				headers: this.buildHeaders(ctx),
 			});
 
 			assertSchema(response.data, SUBMIT_DESIGNS_RESPONSE_SCHEMA);
@@ -65,29 +55,21 @@ class JiraClient {
 	/**
 	 * Returns a single issue, for a given issue ID or issue key.
 	 *
-	 * @see https://developer.atlassian.com/cloud/jira/software/rest/api-group-issue/#api-rest-agile-1-0-issue-issueidorkey-get
-	 *
 	 * @throws {HttpClientError} An error associated with specific HTTP response status codes.
 	 */
 	getIssue = async (
 		issueIdOrKey: string,
-		connectInstallation: ConnectInstallation,
+		ctx: JiraCallContext,
 	): Promise<GetIssueResponse> => {
-		const context = {
-			issueIdOrKey,
-			baseUrl: connectInstallation.baseUrl,
-			clientKey: connectInstallation.clientKey,
-		};
+		const context = { issueIdOrKey, cloudId: ctx.cloudId };
 		return withAxiosErrorTranslation(async () => {
-			const url = new URL(
+			const url = this.buildUrl(
+				ctx,
 				`rest/api/3/issue/${encodeURIComponent(issueIdOrKey)}`,
-				connectInstallation.baseUrl,
 			);
 
-			const response = await axios.get<unknown>(url.toString(), {
-				headers: new AxiosHeaders().setAuthorization(
-					this.buildAuthorizationHeader('GET', url, connectInstallation),
-				),
+			const response = await axios.get<unknown>(url, {
+				headers: this.buildHeaders(ctx),
 			});
 
 			assertSchema(response.data, GET_ISSUE_RESPONSE_SCHEMA);
@@ -97,35 +79,24 @@ class JiraClient {
 	};
 
 	/**
-	 * Sets a connect app property.
-	 *
-	 * @see https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-app-properties/#api-rest-atlassian-connect-1-addons-addonkey-properties-propertykey-put
+	 * Sets a Forge app property.
 	 *
 	 * @throws {HttpClientError} An error associated with specific HTTP response status codes.
 	 */
 	setAppProperty = async (
 		propertyKey: string,
 		value: unknown,
-		connectInstallation: ConnectInstallation,
+		ctx: JiraCallContext,
 	): Promise<void> => {
-		const context = {
-			propertyKey,
-			baseUrl: connectInstallation.baseUrl,
-			clientKey: connectInstallation.clientKey,
-		};
+		const context = { propertyKey, cloudId: ctx.cloudId };
 		return withAxiosErrorTranslation(async () => {
-			const url = new URL(
-				`rest/atlassian-connect/1/addons/${encodeURIComponent(
-					connectInstallation.key,
-				)}/properties/${encodeURIComponent(propertyKey)}`,
-				connectInstallation.baseUrl,
+			const url = this.buildUrl(
+				ctx,
+				`rest/forge/1/app/properties/${encodeURIComponent(propertyKey)}`,
 			);
 
-			await axios.put<unknown>(url.toString(), JSON.stringify(value), {
-				headers: new AxiosHeaders()
-					.setAuthorization(
-						this.buildAuthorizationHeader('PUT', url, connectInstallation),
-					)
+			await axios.put<unknown>(url, JSON.stringify(value), {
+				headers: this.buildHeaders(ctx)
 					.setAccept('application/json')
 					.setContentType('application/json'),
 			});
@@ -133,33 +104,23 @@ class JiraClient {
 	};
 
 	/**
-	 * Deletes a connect app property.
-	 *
-	 * @see https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-app-properties/#api-rest-atlassian-connect-1-addons-addonkey-properties-propertykey-delete
+	 * Deletes a Forge app property.
 	 *
 	 * @throws {HttpClientError} An error associated with specific HTTP response status codes.
 	 */
 	deleteAppProperty = async (
 		propertyKey: string,
-		connectInstallation: ConnectInstallation,
+		ctx: JiraCallContext,
 	): Promise<void> => {
-		const context = {
-			propertyKey,
-			baseUrl: connectInstallation.baseUrl,
-			clientKey: connectInstallation.clientKey,
-		};
+		const context = { propertyKey, cloudId: ctx.cloudId };
 		return withAxiosErrorTranslation(async () => {
-			const url = new URL(
-				`rest/atlassian-connect/1/addons/${encodeURIComponent(
-					connectInstallation.key,
-				)}/properties/${encodeURIComponent(propertyKey)}`,
-				connectInstallation.baseUrl,
+			const url = this.buildUrl(
+				ctx,
+				`rest/forge/1/app/properties/${encodeURIComponent(propertyKey)}`,
 			);
 
-			await axios.delete(url.toString(), {
-				headers: new AxiosHeaders().setAuthorization(
-					this.buildAuthorizationHeader('DELETE', url, connectInstallation),
-				),
+			await axios.delete(url, {
+				headers: this.buildHeaders(ctx),
 			});
 		}, context);
 	};
@@ -167,28 +128,18 @@ class JiraClient {
 	/**
 	 * Returns a list of requested global and project permissions.
 	 *
-	 * @see https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-permissions/#api-rest-api-3-permissions-check-post
-	 *
 	 * @throws {HttpClientError} An error associated with specific HTTP response status codes.
 	 */
 	checkPermissions = async (
 		payload: CheckPermissionsRequest,
-		connectInstallation: ConnectInstallation,
+		ctx: JiraCallContext,
 	): Promise<CheckPermissionsResponse> => {
-		const context = {
-			baseUrl: connectInstallation.baseUrl,
-			clientKey: connectInstallation.clientKey,
-		};
+		const context = { cloudId: ctx.cloudId };
 		return withAxiosErrorTranslation(async () => {
-			const url = new URL(
-				`rest/api/3/permissions/check`,
-				connectInstallation.baseUrl,
-			);
+			const url = this.buildUrl(ctx, `rest/api/3/permissions/check`);
 
-			const response = await axios.post<unknown>(url.toString(), payload, {
-				headers: new AxiosHeaders().setAuthorization(
-					this.buildAuthorizationHeader('POST', url, connectInstallation),
-				),
+			const response = await axios.post<unknown>(url, payload, {
+				headers: this.buildHeaders(ctx),
 			});
 
 			assertSchema(response.data, CHECK_PERMISSIONS_RESPONSE_SCHEMA);
@@ -197,24 +148,15 @@ class JiraClient {
 		}, context);
 	};
 
-	private buildAuthorizationHeader(
-		method: Method,
-		url: URL,
-		{
-			key: connectAppKey,
-			sharedSecret: connectSharedSecret,
-		}: ConnectInstallation,
-	) {
-		const jwtToken = createJwtToken({
-			request: {
-				method,
-				pathname: url.pathname,
-			},
-			expiresIn: TOKEN_EXPIRES_IN,
-			connectAppKey,
-			connectSharedSecret,
-		});
-		return `JWT ${jwtToken}`;
+	private buildUrl(ctx: JiraCallContext, path: string): string {
+		const base = ctx.apiBaseUrl.endsWith('/')
+			? ctx.apiBaseUrl
+			: `${ctx.apiBaseUrl}/`;
+		return new URL(path, base).toString();
+	}
+
+	private buildHeaders(ctx: JiraCallContext): AxiosHeaders {
+		return new AxiosHeaders().setAuthorization(`Bearer ${ctx.appSystemToken}`);
 	}
 }
 

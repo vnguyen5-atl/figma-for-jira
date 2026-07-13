@@ -1,79 +1,45 @@
-import type { SubmitDesignsResponse } from './jira-client';
 import { jiraClient } from './jira-client';
+import type {
+	SubmitDesignsRequest,
+	SubmitDesignsResponse,
+} from './jira-client/types';
 
-import { CauseAwareError } from '../../common/errors';
 import type {
 	AtlassianDesign,
-	ConnectInstallation,
+	JiraCallContext,
 } from '../../domain/entities';
 
 export class JiraDesignService {
-	/**
-	 * @throws {JiraSubmitDesignServiceError} Design submission fails.
-	 */
 	submitDesign = async (
 		design: AtlassianDesign,
-		connectInstallation: ConnectInstallation,
-	): Promise<void> => {
-		return this.submitDesigns([design], connectInstallation);
-	};
-
-	/**
-	 * @throws {JiraSubmitDesignServiceError} Design submission fails.
-	 */
-	submitDesigns = async (
-		designs: AtlassianDesign[],
-		connectInstallation: ConnectInstallation,
-	): Promise<void> => {
-		const response = await jiraClient.submitDesigns(
-			{ designs },
-			connectInstallation,
+		ctx: JiraCallContext,
+		associateWithIssueIds: string[] = [],
+		disassociateFromIssueIds: string[] = [],
+	): Promise<SubmitDesignsResponse> => {
+		return await this.submitDesigns(
+			[
+				{
+					...design,
+					addAssociations: associateWithIssueIds.map((issueId) => ({
+						associationType: 'issueIdOrKeys',
+						values: [issueId],
+					})),
+					removeAssociations: disassociateFromIssueIds.map((issueId) => ({
+						associationType: 'issueIdOrKeys',
+						values: [issueId],
+					})),
+				},
+			],
+			ctx,
 		);
-
-		this.throwIfSubmitDesignResponseHasErrors(response);
 	};
 
-	/**
-	 * @throws {JiraSubmitDesignServiceError}
-	 */
-	private throwIfSubmitDesignResponseHasErrors = (
-		response: SubmitDesignsResponse,
-	) => {
-		if (response.rejectedEntities.length) {
-			const { key, errors } = response.rejectedEntities[0];
-			throw JiraSubmitDesignServiceError.designRejected(key.entityId, errors);
-		}
+	submitDesigns = async (
+		designs: SubmitDesignsRequest['designs'],
+		ctx: JiraCallContext,
+	): Promise<SubmitDesignsResponse> => {
+		return await jiraClient.submitDesigns({ designs }, ctx);
 	};
 }
 
 export const jiraDesignService = new JiraDesignService();
-
-export class JiraSubmitDesignServiceError extends CauseAwareError {
-	designId?: string;
-	rejectionErrors?: { readonly message: string }[];
-
-	private constructor({
-		message,
-		designId,
-		rejectionErrors,
-	}: {
-		message: string;
-		designId?: string;
-		rejectionErrors?: { readonly message: string }[];
-	}) {
-		super(message);
-		this.designId = designId;
-		this.rejectionErrors = rejectionErrors;
-	}
-
-	static designRejected(
-		designId: string,
-		rejectionErrors: { readonly message: string }[],
-	): JiraSubmitDesignServiceError {
-		return new JiraSubmitDesignServiceError({
-			message: 'The design submission has been rejected',
-			designId,
-			rejectionErrors,
-		});
-	}
-}

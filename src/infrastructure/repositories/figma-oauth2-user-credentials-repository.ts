@@ -21,9 +21,9 @@ export class FigmaOAuth2UserCredentialsRepository {
 			create: createParamsDbModel,
 			update: createParamsDbModel,
 			where: {
-				atlassianUserId_connectInstallationId: {
+				atlassianUserId_cloudId: {
 					atlassianUserId: createParamsDbModel.atlassianUserId,
-					connectInstallationId: BigInt(createParams.connectInstallationId),
+					cloudId: createParamsDbModel.cloudId,
 				},
 			},
 		});
@@ -35,14 +35,14 @@ export class FigmaOAuth2UserCredentialsRepository {
 	 */
 	get = async (
 		atlassianUserId: string,
-		connectInstallationId: string,
+		cloudId: string,
 	): Promise<FigmaOAuth2UserCredentials> => {
 		const credentials = await prismaClient
 			.get()
 			.figmaOAuth2UserCredentials.findFirst({
 				where: {
 					atlassianUserId,
-					connectInstallationId: BigInt(connectInstallationId),
+					cloudId,
 				},
 			});
 		if (credentials === null) {
@@ -68,13 +68,13 @@ export class FigmaOAuth2UserCredentialsRepository {
 
 	delete = async (
 		atlassianUserId: string,
-		connectInstallationId: string,
+		cloudId: string,
 	): Promise<FigmaOAuth2UserCredentials> => {
 		const dbModel = await prismaClient.get().figmaOAuth2UserCredentials.delete({
 			where: {
-				atlassianUserId_connectInstallationId: {
+				atlassianUserId_cloudId: {
 					atlassianUserId,
-					connectInstallationId: BigInt(connectInstallationId),
+					cloudId,
 				},
 			},
 		});
@@ -86,13 +86,13 @@ export class FigmaOAuth2UserCredentialsRepository {
 		accessToken,
 		refreshToken,
 		expiresAt,
-		connectInstallationId,
+		cloudId,
 	}: FigmaOAuth2UserCredentialsCreateParams): PrismaFigmaOAuth2UserCredentialsCreateParams => ({
 		atlassianUserId,
 		accessToken,
 		refreshToken,
 		expiresAt,
-		connectInstallationId: BigInt(connectInstallationId),
+		cloudId,
 	});
 
 	private mapToDomainModel = (
@@ -104,7 +104,7 @@ export class FigmaOAuth2UserCredentialsRepository {
 			dbModel.accessToken,
 			dbModel.refreshToken,
 			dbModel.expiresAt,
-			dbModel.connectInstallationId.toString(),
+			dbModel.cloudId,
 		);
 	};
 }

@@ -23,10 +23,10 @@ export class FigmaFileWebhookRepository {
 			create: createParamsDbModel,
 			update: createParamsDbModel,
 			where: {
-				fileKey_eventType_connectInstallationId: {
+				fileKey_eventType_cloudId: {
 					fileKey: createParamsDbModel.fileKey,
 					eventType: createParamsDbModel.eventType,
-					connectInstallationId: createParamsDbModel.connectInstallationId,
+					cloudId: createParamsDbModel.cloudId,
 				},
 			},
 		});
@@ -43,28 +43,28 @@ export class FigmaFileWebhookRepository {
 		return dbModels.map((dbModel) => this.mapToFigmaFileWebhook(dbModel));
 	};
 
-	findByFileKeyAndEventTypeAndConnectInstallationId = async (
+	findByFileKeyAndEventTypeAndCloudId = async (
 		fileKey: string,
 		eventType: FigmaFileWebhookEventType,
-		connectInstallationId: string,
+		cloudId: string,
 	): Promise<FigmaFileWebhook | null> => {
 		const dbModel = await prismaClient.get().figmaFileWebhook.findFirst({
 			where: {
 				fileKey,
 				eventType,
-				connectInstallationId: BigInt(connectInstallationId),
+				cloudId,
 			},
 		});
 
 		return dbModel ? this.mapToFigmaFileWebhook(dbModel) : null;
 	};
 
-	findManyByFileKeyAndConnectInstallationId = async (
+	findManyByFileKeyAndCloudId = async (
 		fileKey: string,
-		connectInstallationId: string,
+		cloudId: string,
 	): Promise<FigmaFileWebhook[]> => {
 		const dbModel = await prismaClient.get().figmaFileWebhook.findMany({
-			where: { fileKey, connectInstallationId: BigInt(connectInstallationId) },
+			where: { fileKey, cloudId },
 		});
 
 		return dbModel.map((record) => this.mapToFigmaFileWebhook(record));
@@ -82,11 +82,9 @@ export class FigmaFileWebhookRepository {
 		return this.mapToFigmaFileWebhook(dbModel);
 	};
 
-	findManyByConnectInstallationId = async (
-		connectInstallationId: string,
-	): Promise<FigmaFileWebhook[]> => {
+	findManyByCloudId = async (cloudId: string): Promise<FigmaFileWebhook[]> => {
 		const dbModel = await prismaClient.get().figmaFileWebhook.findMany({
-			where: { connectInstallationId: BigInt(connectInstallationId) },
+			where: { cloudId },
 		});
 
 		return dbModel.map((record) => this.mapToFigmaFileWebhook(record));
@@ -124,7 +122,7 @@ export class FigmaFileWebhookRepository {
 		fileKey,
 		eventType,
 		creatorAtlassianUserId: createdBy.atlassianUserId,
-		connectInstallationId: BigInt(createdBy.connectInstallationId),
+		cloudId: createdBy.cloudId,
 	});
 
 	private mapToFigmaFileWebhook = ({
@@ -134,7 +132,7 @@ export class FigmaFileWebhookRepository {
 		fileKey,
 		eventType,
 		creatorAtlassianUserId,
-		connectInstallationId,
+		cloudId,
 	}: PrismaFigmaFileWebhook): FigmaFileWebhook => {
 		return {
 			id: id.toString(),
@@ -144,7 +142,7 @@ export class FigmaFileWebhookRepository {
 			eventType: FigmaFileWebhookEventType[eventType],
 			createdBy: {
 				atlassianUserId: creatorAtlassianUserId,
-				connectInstallationId: connectInstallationId.toString(),
+				cloudId,
 			},
 		};
 	};

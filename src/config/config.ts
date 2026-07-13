@@ -4,6 +4,7 @@ export type Config = {
 	readonly app: {
 		readonly baseUrl: URL;
 		readonly key: string;
+		readonly id: string;
 	};
 	readonly server: {
 		readonly port: number;
@@ -29,9 +30,6 @@ export type Config = {
 			readonly stateSecretKey: string;
 		};
 	};
-	readonly jira: {
-		readonly connectKeyServerUrl: URL;
-	};
 };
 
 let config: Config;
@@ -42,6 +40,7 @@ export const getConfig = (): Config => {
 			app: {
 				baseUrl: new URL(readEnvVarString('APP_URL')),
 				key: readEnvVarString('APP_KEY'),
+				id: readEnvVarString('FORGE_APP_ID'),
 			},
 			server: {
 				port: readEnvVarInt('SERVER_PORT'),
@@ -72,11 +71,6 @@ export const getConfig = (): Config => {
 						'file_content:read,file_metadata:read,current_user:read,projects:read,file_dev_resources:read,file_dev_resources:write,webhooks:write',
 					stateSecretKey: readEnvVarString('FIGMA_OAUTH2_STATE_SECRET_KEY'),
 				},
-			},
-			jira: {
-				connectKeyServerUrl: new URL(
-					readEnvVarString('JIRA_CONNECT_KEY_SERVER_URL'),
-				),
 			},
 		};
 	}

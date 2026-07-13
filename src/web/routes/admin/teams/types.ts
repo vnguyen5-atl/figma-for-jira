@@ -1,9 +1,9 @@
 import type { Request, Response } from 'express';
 
 import type {
-	ConnectInstallation,
 	FigmaTeamAuthStatus,
 	FigmaTeamSummary,
+	JiraCallContext,
 } from '../../../../domain/entities';
 
 export type ConnectFigmaTeamRouteParams = {
@@ -11,8 +11,9 @@ export type ConnectFigmaTeamRouteParams = {
 };
 
 type ConnectFigmaTeamLocals = {
-	readonly connectInstallation: ConnectInstallation;
-	readonly atlassianUserId: string;
+	readonly cloudId: string;
+	readonly accountId: string;
+	readonly jiraCallContext: JiraCallContext;
 };
 
 export type ConnectFigmaTeamRequest = Request<
@@ -39,8 +40,9 @@ export type DisconnectFigmaTeamRouteParams = {
 };
 
 export type DisconnectFigmaTeamLocals = {
-	readonly connectInstallation: ConnectInstallation;
-	readonly atlassianUserId: string;
+	readonly cloudId: string;
+	readonly accountId: string;
+	readonly jiraCallContext: JiraCallContext;
 };
 
 export type DisconnectFigmaTeamRequest = Request<
@@ -57,7 +59,7 @@ export type DisconnectFigmaTeamResponse = Response<
 >;
 
 export type ListFigmaTeamsLocals = {
-	readonly connectInstallation: ConnectInstallation;
+	readonly cloudId: string;
 };
 
 export type ListFigmaTeamsResponseBody = ReadonlyArray<FigmaTeamSummary>;

@@ -1,10 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 
 import { FigmaTeamAuthStatus } from '../domain/entities';
-import {
-	generateConnectInstallation,
-	generateFigmaTeam,
-} from '../domain/entities/testing';
+import { generateCloudId,
+	generateFigmaTeam, generateJiraCallContext } from '../domain/entities/testing';
 import {
 	figmaService,
 	PaidPlanRequiredFigmaServiceError,
@@ -23,7 +21,8 @@ describe('connectFigmaTeamUseCase', () => {
 		const teamName = uuidv4();
 		const figmaTeam = generateFigmaTeam({ teamId, teamName });
 		const atlassianUserId = uuidv4();
-		const connectInstallation = generateConnectInstallation();
+		const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 		const webhookId = uuidv4();
 
 		jest.spyOn(figmaService, 'getTeamName').mockResolvedValue(teamName);
@@ -40,7 +39,7 @@ describe('connectFigmaTeamUseCase', () => {
 		const result = await connectFigmaTeamUseCase.execute(
 			teamId,
 			atlassianUserId,
-			connectInstallation,
+			jiraCallContext,
 		);
 
 		expect(result).toStrictEqual({
@@ -51,7 +50,7 @@ describe('connectFigmaTeamUseCase', () => {
 		expect(figmaService.createFileUpdateWebhook).toHaveBeenCalledWith(
 			teamId,
 			expect.anything(),
-			{ atlassianUserId, connectInstallationId: connectInstallation.id },
+			{ atlassianUserId, cloudId: cloudId },
 		);
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -66,11 +65,11 @@ describe('connectFigmaTeamUseCase', () => {
 			teamName,
 			figmaAdminAtlassianUserId: atlassianUserId,
 			authStatus: FigmaTeamAuthStatus.OK,
-			connectInstallationId: connectInstallation.id,
+			cloudId: cloudId,
 		});
 		expect(jiraService.setAppConfigurationState).toHaveBeenCalledWith(
 			ConfigurationState.CONFIGURED,
-			connectInstallation,
+			jiraCallContext,
 		);
 	});
 
@@ -83,11 +82,7 @@ describe('connectFigmaTeamUseCase', () => {
 		jest.spyOn(figmaTeamRepository, 'upsert');
 
 		await expect(
-			connectFigmaTeamUseCase.execute(
-				uuidv4(),
-				uuidv4(),
-				generateConnectInstallation(),
-			),
+			connectFigmaTeamUseCase.execute(uuidv4(), uuidv4(), generateJiraCallContext()),
 		).rejects.toBeInstanceOf(PaidFigmaPlanRequiredUseCaseResultError);
 
 		expect(figmaTeamRepository.upsert).not.toHaveBeenCalled();
@@ -103,11 +98,7 @@ describe('connectFigmaTeamUseCase', () => {
 		jest.spyOn(figmaTeamRepository, 'upsert');
 
 		await expect(
-			connectFigmaTeamUseCase.execute(
-				uuidv4(),
-				uuidv4(),
-				generateConnectInstallation(),
-			),
+			connectFigmaTeamUseCase.execute(uuidv4(), uuidv4(), generateJiraCallContext()),
 		).rejects.toStrictEqual(error);
 
 		expect(figmaTeamRepository.upsert).not.toHaveBeenCalled();

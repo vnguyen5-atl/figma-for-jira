@@ -1,88 +1,76 @@
 import { disconnectFigmaTeamUseCase } from './disconnect-figma-team-use-case';
 
-import {
-	generateConnectInstallation,
-	generateFigmaTeam,
-} from '../domain/entities/testing';
+import { generateCloudId,
+	generateFigmaTeam, generateJiraCallContext } from '../domain/entities/testing';
 import { figmaService } from '../infrastructure/figma';
 import { ConfigurationState, jiraService } from '../infrastructure/jira';
 import { figmaTeamRepository } from '../infrastructure/repositories';
 
 describe('disconnectFigmaTeamUseCase', () => {
 	it('should delete the webhook and FigmaTeam and set unconfigured app state', async () => {
-		const connectInstallation = generateConnectInstallation();
+		const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 		const figmaTeam = generateFigmaTeam({
-			connectInstallationId: connectInstallation.id,
+			cloudId: cloudId,
 		});
 		jest
-			.spyOn(figmaTeamRepository, 'getByTeamIdAndConnectInstallationId')
+			.spyOn(figmaTeamRepository, 'getByTeamIdAndCloudId')
 			.mockResolvedValue(figmaTeam);
 		jest.spyOn(figmaService, 'tryDeleteWebhook').mockResolvedValue();
 		jest.spyOn(figmaTeamRepository, 'delete').mockResolvedValue(figmaTeam);
-		jest
-			.spyOn(figmaTeamRepository, 'findManyByConnectInstallationId')
-			.mockResolvedValue([]);
+		jest.spyOn(figmaTeamRepository, 'findManyByCloudId').mockResolvedValue([]);
 		jest
 			.spyOn(jiraService, 'setAppConfigurationState')
 			.mockResolvedValue(undefined);
 
-		await disconnectFigmaTeamUseCase.execute(
-			figmaTeam.teamId,
-			connectInstallation,
-		);
+		await disconnectFigmaTeamUseCase.execute(figmaTeam.teamId, jiraCallContext);
 
-		expect(
-			figmaTeamRepository.getByTeamIdAndConnectInstallationId,
-		).toHaveBeenCalledWith(figmaTeam.teamId, figmaTeam.connectInstallationId);
+		expect(figmaTeamRepository.getByTeamIdAndCloudId).toHaveBeenCalledWith(
+			figmaTeam.teamId,
+			figmaTeam.cloudId,
+		);
 		expect(figmaService.tryDeleteWebhook).toHaveBeenCalledWith(
 			figmaTeam.webhookId,
 			figmaTeam.adminInfo,
 		);
 		expect(figmaTeamRepository.delete).toHaveBeenCalledWith(figmaTeam.id);
-		expect(
-			figmaTeamRepository.findManyByConnectInstallationId,
-		).toHaveBeenCalledWith(connectInstallation.id);
+		expect(figmaTeamRepository.findManyByCloudId).toHaveBeenCalledWith(cloudId);
 		expect(jiraService.setAppConfigurationState).toHaveBeenCalledWith(
 			ConfigurationState.NOT_CONFIGURED,
-			connectInstallation,
+			jiraCallContext,
 		);
 	});
 
 	it('should delete the webhook and FigmaTeam', async () => {
-		const connectInstallation = generateConnectInstallation();
+		const cloudId = generateCloudId();
+		const jiraCallContext = generateJiraCallContext({ cloudId });
 		const figmaTeam = generateFigmaTeam({
-			connectInstallationId: connectInstallation.id,
+			cloudId: cloudId,
 		});
 		jest
-			.spyOn(figmaTeamRepository, 'getByTeamIdAndConnectInstallationId')
+			.spyOn(figmaTeamRepository, 'getByTeamIdAndCloudId')
 			.mockResolvedValue(figmaTeam);
 		jest.spyOn(figmaService, 'tryDeleteWebhook').mockResolvedValue();
 		jest.spyOn(figmaTeamRepository, 'delete').mockResolvedValue(figmaTeam);
-		jest
-			.spyOn(figmaTeamRepository, 'findManyByConnectInstallationId')
-			.mockResolvedValue([
-				generateFigmaTeam({
-					connectInstallationId: connectInstallation.id,
-				}),
-			]);
+		jest.spyOn(figmaTeamRepository, 'findManyByCloudId').mockResolvedValue([
+			generateFigmaTeam({
+				cloudId: cloudId,
+			}),
+		]);
 		jest.spyOn(jiraService, 'setAppConfigurationState');
 
-		await disconnectFigmaTeamUseCase.execute(
-			figmaTeam.teamId,
-			connectInstallation,
-		);
+		await disconnectFigmaTeamUseCase.execute(figmaTeam.teamId, jiraCallContext);
 
-		expect(
-			figmaTeamRepository.getByTeamIdAndConnectInstallationId,
-		).toHaveBeenCalledWith(figmaTeam.teamId, figmaTeam.connectInstallationId);
+		expect(figmaTeamRepository.getByTeamIdAndCloudId).toHaveBeenCalledWith(
+			figmaTeam.teamId,
+			figmaTeam.cloudId,
+		);
 		expect(figmaService.tryDeleteWebhook).toHaveBeenCalledWith(
 			figmaTeam.webhookId,
 			figmaTeam.adminInfo,
 		);
 		expect(figmaTeamRepository.delete).toHaveBeenCalledWith(figmaTeam.id);
-		expect(
-			figmaTeamRepository.findManyByConnectInstallationId,
-		).toHaveBeenCalledWith(connectInstallation.id);
+		expect(figmaTeamRepository.findManyByCloudId).toHaveBeenCalledWith(cloudId);
 		expect(jiraService.setAppConfigurationState).not.toHaveBeenCalled();
 	});
 });

@@ -8,11 +8,11 @@ import { buildAppUrl } from '../../../config';
 import { figmaAuthService } from '../../../infrastructure/figma';
 import { checkUserFigmaAuthUseCase } from '../../../usecases';
 import { requestSchemaValidationMiddleware } from '../../middleware';
-import { jiraServerToServerSymmetricJwtAuthenticationMiddleware } from '../../middleware/jira';
+import { forgeInvocationTokenMiddleware } from '../../middleware/forge';
 
 export const authRouter = Router();
 
-authRouter.use(jiraServerToServerSymmetricJwtAuthenticationMiddleware);
+authRouter.use(forgeInvocationTokenMiddleware);
 
 /**
  * Checks whether the given Atlassian user is authorized to call Figma API.
@@ -21,11 +21,11 @@ authRouter.get(
 	['/checkAuth'],
 	requestSchemaValidationMiddleware(CHECK_AUTH_REQUEST_SCHEMA),
 	function (req: CheckAuthRequest, res: CheckAuthResponse, next: NextFunction) {
-		const { connectInstallation } = res.locals;
+		const { cloudId } = res.locals;
 		const atlassianUserId = req.query.userId;
 
 		checkUserFigmaAuthUseCase
-			.execute(atlassianUserId, connectInstallation)
+			.execute(atlassianUserId, cloudId)
 			.then((authorized) => {
 				if (authorized) {
 					return res.send({ type: '3LO', authorized });
@@ -34,7 +34,7 @@ authRouter.get(
 				const authorizationEndpoint =
 					figmaAuthService.createOAuth2AuthorizationRequest({
 						atlassianUserId,
-						connectInstallation,
+						cloudId,
 						redirectUrl: buildAppUrl(`figma/oauth/callback`),
 					});
 

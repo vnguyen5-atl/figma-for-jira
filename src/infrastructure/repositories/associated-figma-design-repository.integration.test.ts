@@ -1,37 +1,30 @@
 import { associatedFigmaDesignRepository } from './associated-figma-design-repository';
-import { connectInstallationRepository } from './connect-installation-repository';
 
 import {
 	generateAssociatedFigmaDesign,
 	generateAssociatedFigmaDesignCreateParams,
-	generateConnectInstallationCreateParams,
+	generateCloudId,
 } from '../../domain/entities/testing';
 
 describe('AssociatedFigmaDesignRepository', () => {
-	describe('deleteByDesignIdAndAssociatedWithAriAndConnectInstallationId', () => {
+	describe('deleteByDesignIdAndAssociatedWithAriAndCloudId', () => {
 		it('should delete target entity', async () => {
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = generateCloudId();
 			const [targetAssociatedFigmaDesign, otherAssociatedFigmaDesign] =
 				await Promise.all([
 					associatedFigmaDesignRepository.upsert(
-						generateAssociatedFigmaDesignCreateParams({
-							connectInstallationId: connectInstallation.id,
-						}),
+						generateAssociatedFigmaDesignCreateParams({ cloudId }),
 					),
 					associatedFigmaDesignRepository.upsert(
-						generateAssociatedFigmaDesignCreateParams({
-							connectInstallationId: connectInstallation.id,
-						}),
+						generateAssociatedFigmaDesignCreateParams({ cloudId }),
 					),
 				]);
 
 			const result =
-				await associatedFigmaDesignRepository.deleteByDesignIdAndAssociatedWithAriAndConnectInstallationId(
+				await associatedFigmaDesignRepository.deleteByDesignIdAndAssociatedWithAriAndCloudId(
 					targetAssociatedFigmaDesign.designId,
 					targetAssociatedFigmaDesign.associatedWithAri,
-					targetAssociatedFigmaDesign.connectInstallationId,
+					targetAssociatedFigmaDesign.cloudId,
 				);
 
 			expect(result).toEqual(targetAssociatedFigmaDesign);
@@ -42,21 +35,17 @@ describe('AssociatedFigmaDesignRepository', () => {
 
 		it('should return null if target entity does not exist', async () => {
 			const nonExistingAssociatedFigmaDesign = generateAssociatedFigmaDesign();
-			const connectInstallation = await connectInstallationRepository.upsert(
-				generateConnectInstallationCreateParams(),
-			);
+			const cloudId = generateCloudId();
 			const associatedFigmaDesign =
 				await associatedFigmaDesignRepository.upsert(
-					generateAssociatedFigmaDesignCreateParams({
-						connectInstallationId: connectInstallation.id,
-					}),
+					generateAssociatedFigmaDesignCreateParams({ cloudId }),
 				);
 
 			const result =
-				await associatedFigmaDesignRepository.deleteByDesignIdAndAssociatedWithAriAndConnectInstallationId(
+				await associatedFigmaDesignRepository.deleteByDesignIdAndAssociatedWithAriAndCloudId(
 					nonExistingAssociatedFigmaDesign.designId,
 					nonExistingAssociatedFigmaDesign.associatedWithAri,
-					nonExistingAssociatedFigmaDesign.connectInstallationId,
+					nonExistingAssociatedFigmaDesign.cloudId,
 				);
 
 			expect(result).toBeNull();

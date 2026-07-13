@@ -1,94 +1,63 @@
 import { HttpStatusCode } from 'axios';
-import type { NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
 
-import {
-	INSTALLED_CONNECT_LIFECYCLE_EVENT_REQUEST_SCHEMA,
-	UNINSTALLED_CONNECT_LIFECYCLE_EVENT_REQUEST_SCHEMA,
-} from './schemas';
-import type {
-	ConnectLifecycleEventResponse,
-	InstalledConnectLifecycleEventRequest,
-	UninstalledConnectLifecycleEventRequest,
-} from './types';
-
-import type { ConnectInstallationCreateParams } from '../../../domain/entities';
-import { installedUseCase, uninstalledUseCase } from '../../../usecases';
-import { requestSchemaValidationMiddleware } from '../../middleware';
-import { jiraAsymmetricJwtAuthenticationMiddleware } from '../../middleware/jira';
+import type { JiraCallContext } from '../../../domain/entities';
+import { uninstalledUseCase } from '../../../usecases';
+import { UnauthorizedResponseStatusError } from '../../errors';
+import { forgeInvocationTokenMiddleware } from '../../middleware/forge';
 
 export const lifecycleEventsRouter = Router();
 
-lifecycleEventsRouter.use(jiraAsymmetricJwtAuthenticationMiddleware);
+lifecycleEventsRouter.use(forgeInvocationTokenMiddleware);
 
 /**
- * Handles an "Installed" lifecycle event.
- *
- * @see https://developer.atlassian.com/cloud/jira/platform/connect-app-descriptor/#lifecycle
- */
-lifecycleEventsRouter.post(
-	'/installed',
-	requestSchemaValidationMiddleware(
-		INSTALLED_CONNECT_LIFECYCLE_EVENT_REQUEST_SCHEMA,
-	),
-	(
-		req: InstalledConnectLifecycleEventRequest,
-		res: ConnectLifecycleEventResponse,
-		next: NextFunction,
-	) => {
-		const installation: ConnectInstallationCreateParams = {
-			key: req.body.key,
-			clientKey: req.body.clientKey,
-			sharedSecret: req.body.sharedSecret,
-			baseUrl: req.body.baseUrl,
-			// displayUrl should be set to baseUrl if value is not present in request
-			// docs https://developer.atlassian.com/cloud/jira/platform/connect-app-descriptor/#lifecycle-http-request-payload
-			displayUrl: req.body.displayUrl ?? req.body.baseUrl,
-		};
-		installedUseCase
-			.execute(installation)
-			.then(() => res.sendStatus(HttpStatusCode.NoContent))
-			.catch((e) => next(e));
-	},
-);
-
-/**
- * Handles an "Uninstalled" lifecycle event.
- *
- * @see https://developer.atlassian.com/cloud/jira/platform/connect-app-descriptor/#lifecycle
+ * Handles the Forge "pre-uninstall" lifecycle event, forwarded from the Forge
+ * function in `src/functions/pre-uninstall.ts`.
  *
  * @remarks
  * **Issue 1: An "Uninstall" event is not retryable**
  *
- * Currently, Jira does not retry an "Uninstall" event in case of a failure.
- * Therefore, there is a risk of getting stale data in the database or not disposed resources (e.g.,
- * Figma webhook) in case of a failure. Consider:
- * - Design the `/uninstalled` event handler to be idempotent.
- * - Consider using a queue (e.g., SQS) to retry handling an event in case of failure.
+ * The Forge platform invokes pre-uninstall once with a 55-second timeout. To
+ * mitigate risk of partial failure, the `uninstalledUseCase` is implemented
+ * to be idempotent. Consider also using a queue (e.g., SQS) to retry handling
+ * an event in case of failure.
  *
- *
- * **Issue 2: An "Uninstall" event is not dispatched on uninstallation caused by a site import.**
- *
- * When a site import occurs, Connect Apps are uninstalled in the target site but "Uninstall" events are not dispatched:
- * https://community.developer.atlassian.com/t/ensuring-your-atlassian-connect-app-handles-customer-site-imports/41874
- * Consider one of the following:
- * - Find and delete stale `ConnectInstallation` records (with related resources) on an "/installed" event.
- * - Periodically validate `ConnectInstallation`s and delete stale records (with related resources).
+ * The `cloudId`, `apiBaseUrl`, and `appSystemToken` come from the FIT and the
+ * `x-forge-oauth-system` header (extracted by `forgeInvocationTokenMiddleware`),
+ * not from the request body.
  */
 lifecycleEventsRouter.post(
 	'/uninstalled',
-	requestSchemaValidationMiddleware(
-		UNINSTALLED_CONNECT_LIFECYCLE_EVENT_REQUEST_SCHEMA,
-	),
 	(
-		req: UninstalledConnectLifecycleEventRequest,
-		res: ConnectLifecycleEventResponse,
+		req: Request,
+		res: Response<unknown, { jiraCallContext?: JiraCallContext }>,
 		next: NextFunction,
 	) => {
-		const { clientKey } = req.body;
+		const { jiraCallContext } = res.locals;
+		if (!jiraCallContext) {
+			return next(
+				new UnauthorizedResponseStatusError(
+					'Missing Jira call context (x-forge-oauth-system header).',
+				),
+			);
+		}
+
 		uninstalledUseCase
-			.execute(clientKey)
+			.execute(jiraCallContext)
 			.then(() => res.sendStatus(HttpStatusCode.NoContent))
 			.catch(next);
 	},
 );
+
+/**
+ * Persists the freshest app system token for the current installation.
+ *
+ * Called periodically by the Forge `scheduledTrigger` function in
+ * `src/functions/refresh-app-tokens.ts`. The actual persistence happens
+ * inside `forgeInvocationTokenMiddleware`, so this handler is just a
+ * 204 endpoint to give the trigger something to POST to.
+ */
+lifecycleEventsRouter.post('/refresh-app-token', (_req, res) => {
+	res.sendStatus(HttpStatusCode.NoContent);
+});

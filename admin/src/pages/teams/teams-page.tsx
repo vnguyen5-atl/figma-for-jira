@@ -23,7 +23,7 @@ export function TeamsPage({
 	const teamsQuery = useQuery({
 		queryKey: ['teams'],
 		queryFn: async () => {
-			const teams = (await getTeams()).data;
+			const teams = await getTeams();
 			if (teams.length === 0) {
 				setIsConnectingTeam(true);
 			}

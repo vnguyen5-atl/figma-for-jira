@@ -1,7 +1,5 @@
 import type { Request, Response } from 'express';
 
-import type { ConnectInstallation } from '../../../../domain/entities';
-
 export type MeQueryParameters = { readonly userId: string };
 
 export type MeResponseBody = {
@@ -12,8 +10,8 @@ export type MeResponseBody = {
 };
 
 type MeRequestLocals = {
-	readonly connectInstallation: ConnectInstallation;
-	readonly atlassianUserId: string;
+	readonly cloudId: string;
+	readonly accountId: string;
 };
 
 export type MeRequest = Request<

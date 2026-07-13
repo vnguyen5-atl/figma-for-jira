@@ -3,10 +3,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { InvalidInputUseCaseResultError } from './errors';
 
 import { getFeatureFlag, getLDClient } from '../config/launch_darkly';
-import type { ConnectInstallation } from '../domain/entities';
 import {
 	FigmaDesignIdentifier,
 	FigmaFileWebhookEventType,
+	type JiraCallContext,
 } from '../domain/entities';
 import {
 	figmaBackwardIntegrationServiceV2,
@@ -30,7 +30,7 @@ export type OnDesignAssociatedWithIssueUseCaseParams = {
 		readonly id: string;
 	};
 	readonly atlassianUserId?: string;
-	readonly connectInstallation: ConnectInstallation;
+	readonly jiraCallContext: JiraCallContext;
 };
 
 export const onDesignAssociatedWithIssueUseCaseParams = {
@@ -51,10 +51,12 @@ export const onDesignAssociatedWithIssueUseCaseParams = {
 			);
 		}
 
+		const cloudId = params.jiraCallContext.cloudId;
+
 		await associatedFigmaDesignRepository.upsert({
 			designId: figmaDesignId,
 			associatedWithAri: params.issue.ari,
-			connectInstallationId: params.connectInstallation.id,
+			cloudId,
 			// Consider stop writing to this column.
 			// This code is called within the `onEntityAssociated` action, which is asynchronously called when a Design has been associated with an Issue.
 			// Therefore, the original input URL is not available in this context.
@@ -67,7 +69,7 @@ export const onDesignAssociatedWithIssueUseCaseParams = {
 			figmaDesignId,
 			issueId: params.issue.id,
 			atlassianUserId: params.atlassianUserId,
-			connectInstallation: params.connectInstallation,
+			jiraCallContext: params.jiraCallContext,
 		});
 
 		if (params.atlassianUserId) {
@@ -75,13 +77,13 @@ export const onDesignAssociatedWithIssueUseCaseParams = {
 				figmaDesignId.fileKey,
 				FigmaFileWebhookEventType.FILE_UPDATE,
 				params.atlassianUserId,
-				params.connectInstallation.id,
+				cloudId,
 			);
 			await maybeCreateFigmaFileWebhooks(
 				figmaDesignId.fileKey,
 				FigmaFileWebhookEventType.DEV_MODE_STATUS_UPDATE,
 				params.atlassianUserId,
-				params.connectInstallation.id,
+				cloudId,
 			);
 		} else {
 			getLogger().warn(
@@ -95,7 +97,7 @@ async function maybeCreateFigmaFileWebhooks(
 	fileKey: string,
 	eventType: FigmaFileWebhookEventType,
 	atlassianUserId: string,
-	connectInstallationId: string,
+	cloudId: string,
 ): Promise<void> {
 	const ldClient = await getLDClient();
 	const useFileWebhooks = await getFeatureFlag(
@@ -109,10 +111,10 @@ async function maybeCreateFigmaFileWebhooks(
 	}
 
 	const existingWebhook =
-		await figmaFileWebhookRepository.findByFileKeyAndEventTypeAndConnectInstallationId(
+		await figmaFileWebhookRepository.findByFileKeyAndEventTypeAndCloudId(
 			fileKey,
 			eventType,
-			connectInstallationId,
+			cloudId,
 		);
 
 	if (existingWebhook) {
@@ -127,7 +129,7 @@ async function maybeCreateFigmaFileWebhooks(
 			webhookPasscode,
 			{
 				atlassianUserId,
-				connectInstallationId,
+				cloudId,
 			},
 		);
 
@@ -137,7 +139,7 @@ async function maybeCreateFigmaFileWebhooks(
 			fileKey,
 			webhookPasscode,
 			createdBy: {
-				connectInstallationId,
+				cloudId,
 				atlassianUserId,
 			},
 		});

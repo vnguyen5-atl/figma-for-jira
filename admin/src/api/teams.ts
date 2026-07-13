@@ -1,6 +1,8 @@
-import { type AxiosResponse } from 'axios';
-
-import { axiosRest } from './axiosInstance';
+import {
+	remoteDelete,
+	remoteGetJson,
+	remotePostJson,
+} from './axiosInstance';
 
 export enum FigmaTeamAuthStatus {
 	OK = 'OK',
@@ -13,20 +15,22 @@ export type FigmaTeamSummary = {
 	readonly authStatus: FigmaTeamAuthStatus;
 };
 
-export async function getTeams(): Promise<
-	AxiosResponse<ReadonlyArray<FigmaTeamSummary>>
-> {
-	return await axiosRest.get('/admin/teams');
+export async function getTeams(): Promise<ReadonlyArray<FigmaTeamSummary>> {
+	return await remoteGetJson<ReadonlyArray<FigmaTeamSummary>>('/admin/teams');
 }
 
 export async function connectTeam(
 	teamId: string,
-): Promise<AxiosResponse<Readonly<FigmaTeamSummary>>> {
-	return await axiosRest.post(`/admin/teams/${teamId}/connect`);
+): Promise<Readonly<FigmaTeamSummary>> {
+	const result = await remotePostJson<FigmaTeamSummary>(
+		`/admin/teams/${teamId}/connect`,
+	);
+	if (!result) {
+		throw new Error('Connect team request returned an empty response.');
+	}
+	return result;
 }
 
-export async function disconnectTeam(
-	teamId: string,
-): Promise<AxiosResponse<void>> {
-	return await axiosRest.delete(`/admin/teams/${teamId}/disconnect`);
+export async function disconnectTeam(teamId: string): Promise<void> {
+	await remoteDelete(`/admin/teams/${teamId}/disconnect`);
 }

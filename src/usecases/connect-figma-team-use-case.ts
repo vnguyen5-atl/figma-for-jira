@@ -6,7 +6,7 @@ import {
 	PaidFigmaPlanRequiredUseCaseResultError,
 } from './errors';
 
-import type { ConnectInstallation, FigmaTeamSummary } from '../domain/entities';
+import type { FigmaTeamSummary, JiraCallContext } from '../domain/entities';
 import { FigmaTeamAuthStatus } from '../domain/entities';
 import {
 	figmaService,
@@ -25,20 +25,21 @@ export const connectFigmaTeamUseCase = {
 	execute: async (
 		teamId: string,
 		atlassianUserId: string,
-		connectInstallation: ConnectInstallation,
+		jiraCallContext: JiraCallContext,
 	): Promise<FigmaTeamSummary> => {
+		const { cloudId } = jiraCallContext;
 		try {
 			const webhookPasscode = uuidv4();
 
 			const teamName = await figmaService.getTeamName(teamId, {
 				atlassianUserId,
-				connectInstallationId: connectInstallation.id,
+				cloudId,
 			});
 
 			const { webhookId, teamId: figmaTeamId } =
 				await figmaService.createFileUpdateWebhook(teamId, webhookPasscode, {
 					atlassianUserId,
-					connectInstallationId: connectInstallation.id,
+					cloudId,
 				});
 
 			const figmaTeam = await figmaTeamRepository.upsert({
@@ -48,12 +49,12 @@ export const connectFigmaTeamUseCase = {
 				teamName,
 				figmaAdminAtlassianUserId: atlassianUserId,
 				authStatus: FigmaTeamAuthStatus.OK,
-				connectInstallationId: connectInstallation.id,
+				cloudId,
 			});
 
 			await jiraService.setAppConfigurationState(
 				ConfigurationState.CONFIGURED,
-				connectInstallation,
+				jiraCallContext,
 			);
 
 			return figmaTeam.toFigmaTeamSummary();

@@ -1,6 +1,6 @@
 import { ForbiddenByFigmaUseCaseResultError } from './errors';
 
-import type { ConnectInstallation } from '../domain/entities';
+import type { JiraCallContext } from '../domain/entities';
 import {
 	figmaService,
 	UnauthorizedFigmaServiceError,
@@ -12,13 +12,13 @@ export const disconnectFigmaTeamUseCase = {
 	/**
 	 * @throws {ForbiddenByFigmaUseCaseResultError} Not authorized to access Figma.
 	 */
-	execute: async (teamId: string, connectInstallation: ConnectInstallation) => {
+	execute: async (teamId: string, jiraCallContext: JiraCallContext) => {
+		const { cloudId } = jiraCallContext;
 		try {
-			const figmaTeam =
-				await figmaTeamRepository.getByTeamIdAndConnectInstallationId(
-					teamId,
-					connectInstallation.id,
-				);
+			const figmaTeam = await figmaTeamRepository.getByTeamIdAndCloudId(
+				teamId,
+				cloudId,
+			);
 
 			await figmaService.tryDeleteWebhook(
 				figmaTeam.webhookId,
@@ -28,14 +28,12 @@ export const disconnectFigmaTeamUseCase = {
 			await figmaTeamRepository.delete(figmaTeam.id);
 
 			const configuredTeams =
-				await figmaTeamRepository.findManyByConnectInstallationId(
-					connectInstallation.id,
-				);
+				await figmaTeamRepository.findManyByCloudId(cloudId);
 
 			if (configuredTeams.length === 0) {
 				await jiraService.setAppConfigurationState(
 					ConfigurationState.NOT_CONFIGURED,
-					connectInstallation,
+					jiraCallContext,
 				);
 			}
 		} catch (e) {
